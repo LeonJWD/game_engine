@@ -1,0 +1,11 @@
+[package]
+name = "wgpu_tutorial"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+env_logger = "0.11.7"
+log = "0.4.26"
+pollster = "0.4.0"
+wgpu = "24.0.1"
+winit = {version= "0.30.9",  features = ["rwh_05"]}
