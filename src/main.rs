@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use app::App;
-use app_state::State;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -11,7 +10,6 @@ use winit::{
 
 mod app;
 mod app_state;
-
 fn main() {
     env_logger::init();
 
