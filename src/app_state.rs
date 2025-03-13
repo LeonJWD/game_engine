@@ -49,8 +49,43 @@ const VERTICES: &[Vertex] = &[
         color: [0.5, 0.0, 0.5],
     }, // E
 ];
-
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+const VERTICES2: &[Vertex] = &[
+    Vertex {
+        position: [0.0, 0.0, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // A
+    Vertex {
+        position: [-0.1, 0.1, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // B
+    Vertex {
+        position: [-0.3, -0.1, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // C
+    Vertex {
+        position: [-0.1, -0.3, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // D
+    Vertex {
+        position: [0.0, -0.4, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // E
+    Vertex {
+        position: [0.1, -0.3, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // E
+    Vertex {
+        position: [0.3, -0.1, 0.0],
+        color: [0.5, 0.0, 0.5],
+    },// G
+    Vertex {
+        position: [0.1, 0.1, 0.0],
+        color: [0.5, 0.0, 0.5],
+    },
+];
+const INDICES2: &[u16] = &[0,1,2,0,2,3,0,3,4,0,4,5,0,5,6,0,6,7,0,7,8];
+
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum RenderState {
@@ -66,7 +101,7 @@ pub struct State {
     size: winit::dpi::PhysicalSize<u32>,
     surface: wgpu::Surface<'static>,
     surface_format: wgpu::TextureFormat,
-    render_pipelines: Vec<wgpu::RenderPipeline>,
+    render_pipeline: wgpu::RenderPipeline,
     pub state: RenderState,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
@@ -150,73 +185,25 @@ impl State {
             cache: None,     // 6.
         });
 
-        let render_pipeline_challange =
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
-                layout: Some(&render_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"), // 1.
-                    buffers: &[Vertex::desc()],   // 2.
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    // 3.
-                    module: &shader,
-                    entry_point: Some("fs_challange"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        // 4.
-                        format: surface_format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList, // 1.
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw, // 2.
-                    cull_mode: Some(wgpu::Face::Back),
-                    // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    // Requires Features::DEPTH_CLIP_CONTROL
-                    unclipped_depth: false,
-                    // Requires Features::CONSERVATIVE_RASTERIZATION
-                    conservative: false,
-                },
-                depth_stencil: None, // 1.
-                multisample: wgpu::MultisampleState {
-                    count: 1,                         // 2.
-                    mask: !0,                         // 3.
-                    alpha_to_coverage_enabled: false, // 4.
-                },
-                multiview: None, // 5.
-                cache: None,     // 6.
-            });
 
-        let mut render_pipelines = Vec::new();
-
-        render_pipelines.push(render_pipeline);
-
-        render_pipelines.push(render_pipeline_challange);
 
         let state = RenderState::Main;
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
+            contents: bytemuck::cast_slice(VERTICES2),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let num_vertices = VERTICES.len() as u32;
+        let num_vertices = VERTICES2.len() as u32;
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
+            contents: bytemuck::cast_slice(INDICES2),
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let num_indices = INDICES.len() as u32;
+        let num_indices = INDICES2.len() as u32;
 
         let state = State {
             window,
@@ -225,7 +212,7 @@ impl State {
             size,
             surface,
             surface_format,
-            render_pipelines,
+            render_pipeline,
             state,
             vertex_buffer,
             num_vertices,
@@ -289,15 +276,12 @@ impl State {
 
         //draw commands here
 
-        let pipeline = match self.state {
-            RenderState::Colored => &self.render_pipelines[1],
-            _ => &self.render_pipelines[0],
-        };
-
+        let pipeline =&self.render_pipeline;
         render_pass.set_pipeline(pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+        render_pass.draw_indexed(0..self.num_indices
+            , 0, 0..1);
 
         drop(render_pass);
 

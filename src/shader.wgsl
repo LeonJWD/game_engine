@@ -24,7 +24,3 @@ fn vs_main(
 fn fs_main(in:VertexOutput) -> @location(0) vec4<f32>{
     return vec4<f32>(in.color,1.0);
 } 
-@fragment
-fn fs_challange(in:VertexOutput) -> @location(0) vec4<f32>{
-    return vec4<f32>(0.4,0.7,0.9,1.0);
-} 
