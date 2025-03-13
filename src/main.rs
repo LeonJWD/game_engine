@@ -10,6 +10,8 @@ use winit::{
 
 mod app;
 mod app_state;
+mod texture;
+
 fn main() {
     env_logger::init();
 
