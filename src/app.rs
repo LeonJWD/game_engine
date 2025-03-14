@@ -46,26 +46,12 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(size) => {
                 state.resize(size);
             }
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        state: ElementState::Pressed,
-                        physical_key: PhysicalKey::Code(KeyCode::Space),
-                        ..
-                    },
-                device_id: _,
-                is_synthetic: _,
-            } => {
-                if state.state == RenderState::Main {
-                    state.set_state(RenderState::Colored);
-                }
-                else if state.state == RenderState::Colored {
-                    state.set_state(RenderState::Main);
-                }
-
-                //println!("{:?}", state.state);
-            }
             _ => (),
         }
+
+        state.camera_controller.process_events(&event);
+        state.update();
+
+        
     }
 }
