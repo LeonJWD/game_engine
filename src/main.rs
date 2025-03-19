@@ -13,6 +13,7 @@ mod app_state;
 mod texture;
 
 fn main() {
+    
     env_logger::init();
 
     let event_loop = EventLoop::new().unwrap();
