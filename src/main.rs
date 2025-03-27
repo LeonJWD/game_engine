@@ -14,6 +14,7 @@ use winit::{
 
 mod app;
 mod app_state;
+mod camera;
 mod model;
 mod texture;
 

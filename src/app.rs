@@ -1,11 +1,17 @@
-use std::{any::Any, default, sync::Arc};
+use std::{
+    any::Any,
+    default,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crate::app_state::{RenderState, State};
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, KeyEvent, WindowEvent},
+    event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
+    platform::scancode::PhysicalKeyExtScancode,
     window::{Window, WindowId},
 };
 
@@ -13,6 +19,7 @@ use winit::{
 pub struct App {
     state: Option<State>,
 }
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = Arc::new(
@@ -26,6 +33,20 @@ impl ApplicationHandler for App {
 
         window.request_redraw();
     }
+    fn device_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        let state = self.state.as_mut().unwrap();
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                state.camera_controller.proccess_mouse(delta.0, delta.1);
+            }
+            _ => (),
+        }
+    }
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -33,12 +54,12 @@ impl ApplicationHandler for App {
         event: WindowEvent,
     ) {
         let state = self.state.as_mut().unwrap();
+        if event == WindowEvent::CloseRequested {
+            println!("The close button was pressed. stopping");
+            event_loop.exit();
+        }
 
         match event {
-            WindowEvent::CloseRequested => {
-                println!("The close button was pressed. stopping");
-                event_loop.exit();
-            }
             WindowEvent::RedrawRequested => {
                 state.render();
                 state.get_window().request_redraw();
@@ -46,12 +67,10 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(size) => {
                 state.resize(size);
             }
+
             _ => (),
         }
-
-        state.camera_controller.process_events(&event);
-        state.update();
-
-        
+        state.input(&event);
+        state.update(Duration::from_millis(10));
     }
 }
