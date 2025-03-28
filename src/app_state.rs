@@ -11,6 +11,7 @@ use winit::{
 
 use cgmath::prelude::*;
 
+use crate::object_loader::{self, objectLoaderDescriptor};
 use crate::{
     model::{DrawModel, Model, ModelVertex, Vertex},
     texture,
@@ -39,9 +40,10 @@ struct LightUniform {
     _padding2: u32,
 }
 
-struct Instance {
-    position: cgmath::Vector3<f32>,
-    rotation: cgmath::Quaternion<f32>,
+#[derive(Debug, Clone, Copy)]
+pub struct Instance {
+    pub position: cgmath::Vector3<f32>,
+    pub rotation: cgmath::Quaternion<f32>,
 }
 
 #[repr(C)]
@@ -405,7 +407,8 @@ impl State {
         });
 
         const SPACE_BETWEEN: f32 = 3.0;
-        let mut instances: Vec<Instance> = (0..NUM_INSTANCES_PER_ROW)
+        let mut loaded_object_descriptors: Vec<object_loader::objectLoaderDescriptor> = (0
+            ..NUM_INSTANCES_PER_ROW)
             .flat_map(|z| {
                 (0..NUM_INSTANCES_PER_ROW).map(move |x| {
                     let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
@@ -422,7 +425,11 @@ impl State {
                         cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
                     };
 
-                    Instance { position, rotation }
+                    object_loader::objectLoaderDescriptor {
+                        path: "res/cube.obj".into(),
+                        position,
+                        rotation,
+                    }
                 })
             })
             .collect::<Vec<_>>();
@@ -433,30 +440,29 @@ impl State {
             z: 1.0,
         };
         let rotation = cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(0.0));
+        loaded_object_descriptors.push(objectLoaderDescriptor {
+            path: "res/wooden watch tower2.obj".into(),
+            position,
+            rotation,
+        });
 
-        instances.push(Instance { position, rotation });
-        let instance_ranges = vec![
-            0..(instances.len() - 1) as u32,
-            (instances.len() - 1) as u32..(instances.len()) as u32,
-        ];
+        let objs = object_loader::load_models(
+            loaded_object_descriptors,
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+        );
 
-        let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        let instance_data = objs
+            .instances
+            .iter()
+            .map(Instance::to_raw)
+            .collect::<Vec<_>>();
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(&instance_data),
             usage: wgpu::BufferUsages::VERTEX,
         });
-
-        let obj_models = vec![
-            Model::load_model("res/cube.obj", &device, &queue, &texture_bind_group_layout).unwrap(),
-            Model::load_model(
-                "res/wooden watch tower2.obj",
-                &device,
-                &queue,
-                &texture_bind_group_layout,
-            )
-            .unwrap(),
-        ];
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -499,10 +505,10 @@ impl State {
             camera_bind_group,
             camera_controller,
             depth_texture,
-            obj_models,
+            obj_models: objs.models,
             instance_buffer,
-            instances,
-            instance_ranges,
+            instances: objs.instances,
+            instance_ranges: objs.instance_ranges,
             light_uniform,
             light_buffer,
             light_bind_group_layout,

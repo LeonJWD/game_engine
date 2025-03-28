@@ -16,6 +16,7 @@ mod app;
 mod app_state;
 mod camera;
 mod model;
+mod object_loader;
 mod texture;
 
 fn main() -> anyhow::Result<()> {

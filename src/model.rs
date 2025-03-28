@@ -35,6 +35,7 @@ impl Vertex for ModelVertex {
         }
     }
 }
+#[derive(Debug, Clone)]
 pub struct Material {
     pub name: String,
     pub diffuse_texture: texture::Texture,
@@ -83,6 +84,7 @@ impl Material {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Mesh {
     pub name: String,
     pub vertex_buffer: wgpu::Buffer,
@@ -91,6 +93,7 @@ pub struct Mesh {
     pub material: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct Model {
     pub name: String,
     pub meshes: Vec<Mesh>,
