@@ -1,6 +1,6 @@
 use cgmath::Transform;
 use image::GenericImageView;
-use std::{sync::Arc, time::Duration};
+use std::{collections::btree_map::Range, sync::Arc, time::Duration};
 use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
@@ -151,7 +151,8 @@ pub struct State {
     camera_bind_group: wgpu::BindGroup,
     pub camera_controller: CameraController,
     depth_texture: texture::Texture,
-    obj_model: Model,
+    obj_models: Vec<Model>,
+    instance_ranges: Vec<std::ops::Range<u32>>,
     instance_buffer: wgpu::Buffer,
     instances: Vec<Instance>,
     light_uniform: LightUniform,
@@ -404,7 +405,7 @@ impl State {
         });
 
         const SPACE_BETWEEN: f32 = 3.0;
-        let instances: Vec<Instance> = (0..NUM_INSTANCES_PER_ROW)
+        let mut instances: Vec<Instance> = (0..NUM_INSTANCES_PER_ROW)
             .flat_map(|z| {
                 (0..NUM_INSTANCES_PER_ROW).map(move |x| {
                     let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
@@ -426,6 +427,19 @@ impl State {
             })
             .collect::<Vec<_>>();
 
+        let position = cgmath::Vector3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        };
+        let rotation = cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(0.0));
+
+        instances.push(Instance { position, rotation });
+        let instance_ranges = vec![
+            0..(instances.len() - 1) as u32,
+            (instances.len() - 1) as u32..(instances.len()) as u32,
+        ];
+
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
@@ -433,8 +447,16 @@ impl State {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let obj_model =
-            Model::load_model("res/cube.obj", &device, &queue, &texture_bind_group_layout).unwrap();
+        let obj_models = vec![
+            Model::load_model("res/cube.obj", &device, &queue, &texture_bind_group_layout).unwrap(),
+            Model::load_model(
+                "res/wooden watch tower2.obj",
+                &device,
+                &queue,
+                &texture_bind_group_layout,
+            )
+            .unwrap(),
+        ];
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -477,9 +499,10 @@ impl State {
             camera_bind_group,
             camera_controller,
             depth_texture,
-            obj_model,
+            obj_models,
             instance_buffer,
             instances,
+            instance_ranges,
             light_uniform,
             light_buffer,
             light_bind_group_layout,
@@ -553,12 +576,15 @@ impl State {
 
         render_pass.set_pipeline(&self.render_pipeline);
 
-        render_pass.draw_model_instanced(
-            &self.obj_model,
-            0..self.instances.len() as u32,
-            &self.camera_bind_group,
-            &self.light_bind_group,
-        );
+        for i in 0..self.obj_models.len() {
+            render_pass.draw_model_instanced(
+                &self.obj_models[i],
+                self.instance_ranges[i].clone(),
+                &self.camera_bind_group,
+                &self.light_bind_group,
+            );
+        }
+
         drop(render_pass);
 
         self.queue.submit([encoder.finish()]);
