@@ -1,11 +1,6 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader, Cursor, Read};
-use std::mem;
+use std::io::{BufReader, Cursor};
 use std::ops::Range;
 
-use glob::glob;
-use wgpu::Device;
-use wgpu::core::instance;
 use wgpu::util::DeviceExt;
 
 use crate::texture;
@@ -242,7 +237,7 @@ impl Model {
                 // Average the tangents/bitangents
                 for (i, n) in triangles_included.into_iter().enumerate() {
                     let denom = 1.0 / n as f32;
-                    let mut v = &mut vertices[i];
+                    let v = &mut vertices[i];
                     v.tangent = (cgmath::Vector3::from(v.tangent) * denom).into();
                     v.bitangent = (cgmath::Vector3::from(v.bitangent) * denom).into();
                 }

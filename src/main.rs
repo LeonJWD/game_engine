@@ -1,16 +1,7 @@
-use std::sync::Arc;
 
 use anyhow::Ok;
 use app::App;
-use fs_extra::copy_items;
-use fs_extra::dir::CopyOptions;
-use std::env;
-use winit::{
-    application::ApplicationHandler,
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    window::{Window, WindowId},
-};
+use winit::event_loop::{ControlFlow, EventLoop};
 
 mod app;
 mod app_state;

@@ -1,7 +1,6 @@
-use wgpu::Instance;
 
 use crate::app_state;
-use crate::model::{self, Model};
+use crate::model::{Model};
 #[derive(Debug)]
 pub struct objectLoaderDescriptor {
     pub path: String,
@@ -31,10 +30,10 @@ pub fn load_object(
         position: desc.position,
         rotation: desc.rotation,
     };
-    return loadedObject {
+    loadedObject {
         model: obj_model,
-        instance: instance,
-    };
+        instance,
+    }
 }
 pub fn load_models(
     descs: Vec<objectLoaderDescriptor>,
@@ -65,7 +64,7 @@ pub fn load_models(
         instances.push(objs[i].instance);
         if objs[i - 1].model.name != objs[i].model.name {
             models.push(objs[i - 1].model.clone());
-            instance_ranges.push(start as u32..end - 1);
+            instance_ranges.push(start..end - 1);
             start = end;
         }
     }

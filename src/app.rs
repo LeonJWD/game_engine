@@ -1,17 +1,13 @@
 use std::{
-    any::Any,
-    default,
     sync::Arc,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
-use crate::app_state::{RenderState, State};
+use crate::app_state::State;
 use winit::{
     application::ApplicationHandler,
-    event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
-    platform::scancode::PhysicalKeyExtScancode,
+    event::{DeviceEvent, WindowEvent},
+    event_loop::ActiveEventLoop,
     window::{Window, WindowId},
 };
 
@@ -40,11 +36,8 @@ impl ApplicationHandler for App {
         event: winit::event::DeviceEvent,
     ) {
         let state = self.state.as_mut().unwrap();
-        match event {
-            DeviceEvent::MouseMotion { delta } => {
-                state.camera_controller.proccess_mouse(delta.0, delta.1);
-            }
-            _ => (),
+        if let DeviceEvent::MouseMotion { delta } = event {
+            state.camera_controller.proccess_mouse(delta.0, delta.1);
         }
     }
     fn window_event(

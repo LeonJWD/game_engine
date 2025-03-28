@@ -57,8 +57,8 @@ impl Projection {
         Self {
             aspect: width as f32,
             fovy: fovy.into(),
-            znear: znear,
-            zfar: zfar,
+            znear,
+            zfar,
         }
     }
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -94,8 +94,8 @@ impl CameraController {
             rotate_horizontal: 0.0,
             rotate_vertical: 0.0,
             scroll: 0.0,
-            speed: speed,
-            sensitivity: sensitivity,
+            speed,
+            sensitivity,
         }
     }
 

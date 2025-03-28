@@ -1,12 +1,9 @@
-use cgmath::Transform;
 use image::GenericImageView;
-use std::{collections::btree_map::Range, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use wgpu::util::DeviceExt;
 use winit::{
-    application::ApplicationHandler,
     event::{MouseButton, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    window::{Window, WindowId},
+    window::Window,
 };
 
 use cgmath::prelude::*;
@@ -18,10 +15,9 @@ use crate::{
 };
 
 use crate::camera::*;
-use winit::dpi::PhysicalPosition;
 use winit::{
     event::{ElementState, KeyEvent},
-    keyboard::{KeyCode, PhysicalKey},
+    keyboard::PhysicalKey,
 };
 
 const NUM_INSTANCES_PER_ROW: u32 = 10;
@@ -490,7 +486,9 @@ impl State {
             )
         };
 
-        let state = State {
+        
+
+        State {
             window,
             device,
             queue,
@@ -514,9 +512,7 @@ impl State {
             light_bind_group_layout,
             light_bind_group,
             mouse_pressed: false,
-        };
-
-        state
+        }
     }
     pub fn get_window(&self) -> &Window {
         &self.window
