@@ -1,24 +1,25 @@
 
-struct VertexInput{
+struct VertexInput {
     @location(0) position: vec3<f32>,
-    @location(1) tex_coords:vec2<f32>,
+    @location(1) tex_coords: vec2<f32>,
     @location(2) normal: vec3<f32>,
     @location(3) tangent: vec3<f32>,
     @location(4) bitangent: vec3<f32>,
 };
 
+const MAX_LIGHTS:u32=2;
 
-struct VertexOutput{
-    @builtin(position) clip_position:vec4<f32>,
-    @location(0) tex_coords:vec2<f32>,
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coords: vec2<f32>,
     @location(1) tangent_position: vec3<f32>,
-    @location(2) tangent_light_position: vec3<f32>,
-    @location(3) tangent_view_position: vec3<f32>,
+    @location(2) tangent_view_position: vec3<f32>,
+    @location(3) tangent_light_position: array<vec3<f32>,MAX_LIGHTS>,
 };
 
-struct CameraUniform{
-    view_pos:vec4<f32>,
-    view_proj:mat4x4<f32>,
+struct CameraUniform {
+    view_pos: vec4<f32>,
+    view_proj: mat4x4<f32>,
 };
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
@@ -35,8 +36,9 @@ var s_normal: sampler;
 
 
 struct Light {
-    position: vec3<f32>,
-    color: vec3<f32>,
+    position: array<vec4<f32>,MAX_LIGHTS>,
+    color: array<vec4<f32>,MAX_LIGHTS>,
+    num_lights: u32,
 }
 @group(2) @binding(0)
 var<uniform> light: Light;
@@ -66,12 +68,21 @@ fn vs_main(
         instance.model_matrix_3,
     );
 
-      let normal_matrix = mat3x3<f32>(
+    let normal_matrix = mat3x3<f32>(
         instance.normal_matrix_0,
         instance.normal_matrix_1,
         instance.normal_matrix_2,
     );
 
+
+    var light_position = array<vec3<f32>,MAX_LIGHTS>();
+    var light_color = array<vec3<f32>,MAX_LIGHTS>();
+
+
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        light_position[i] = vec3<f32>(light.position[i][0], light.position[i][1], light.position[i][2]);
+        light_color[i] = vec3<f32>(light.color[i][0], light.color[i][1], light.color[i][2]);
+    }
 
     let world_normal = normalize(normal_matrix * model.normal);
     let world_tangent = normalize(normal_matrix * model.tangent);
@@ -89,32 +100,68 @@ fn vs_main(
     out.tex_coords = model.tex_coords;
     out.tangent_position = tangent_matrix * world_position.xyz;
     out.tangent_view_position = tangent_matrix * camera.view_pos.xyz;
-    out.tangent_light_position = tangent_matrix * light.position;
+
+    var tlws = array<vec3<f32>,MAX_LIGHTS >();
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+      //TODO: erst Variable erstellen, dann nach Schleife zuweischen
+        tlws[i] = tangent_matrix * light_position[i];
+    }
+    out.tangent_light_position = tlws;
     return out;
 }
 
-@fragment
-fn fs_main(in:VertexOutput) -> @location(0) vec4<f32>{
+    @fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+
+    var light_position = array<vec3<f32>,MAX_LIGHTS>();
+    var light_color = array<vec3<f32>,MAX_LIGHTS>();
+
+
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        light_position[i] = vec3<f32>(light.position[i][0], light.position[i][1], light.position[i][2]);
+        light_color[i] = vec3<f32>(light.color[i][0], light.color[i][1], light.color[i][2]);
+    }
+
     let object_color: vec4<f32>=textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
 
-    let ambient_strength=0.1;
-    let ambient_color=light.color*ambient_strength;
+    let ambient_strength=0.0;
+    let ambient_color=light_color[0]*ambient_strength;
 
     let tangent_normal = object_normal.xyz * 2.0 - 1.0;
-    let light_dir = normalize(in.tangent_light_position - in.tangent_position);
+    var light_dir= array<vec3<f32>,MAX_LIGHTS>();
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        light_dir[i] = normalize(in.tangent_light_position[i] - in.tangent_position);
+    }
+
+
     let view_dir = normalize(in.tangent_view_position - in.tangent_position);
-    let half_dir=normalize(view_dir+light_dir);
+    var half_light = array<vec3<f32>,MAX_LIGHTS>();;
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        half_light[i] = normalize(view_dir + light_dir[i]);
+    }
+    var diffuse_strength = array<f32,MAX_LIGHTS>();
 
-    let diffuse_strength=max(dot(tangent_normal, light_dir),0.0);
-    let diffuse_color=light.color*diffuse_strength;
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        diffuse_strength[i] = max(dot(tangent_normal, light_dir[i]), 0.0);
+    }
+    var diffuse_color = vec3<f32>();
 
-    
-    let specular_strength=pow(max(dot(tangent_normal, half_dir),0.0),32.0);
-    let specular_color=specular_strength*light.color;
-    
-    
-    let result=(ambient_color+diffuse_color+specular_color)*object_color.xyz;
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        diffuse_color = (light_color[i] * diffuse_strength[i]) + diffuse_color;
+    }
+
+    var specular_color = vec3<f32>();
+
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        let specular_strength = pow(max(dot(tangent_normal, half_light[i]), 0.0), 32.0);
+
+        specular_color = specular_strength * light_color[i]+ specular_color;
+    }
+
+
+
+    let result = (ambient_color + diffuse_color + specular_color) * object_color.xyz;
 
     return  vec4<f32>(result, object_color.a);
 } 

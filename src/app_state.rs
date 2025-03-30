@@ -27,13 +27,14 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
     NUM_INSTANCES_PER_ROW as f32 * 0.5,
 );
 
+const MAX_LIGHTS: usize = 2;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct LightUniform {
-    position: [f32; 3],
-    _padding: u32,
-    color: [f32; 3],
-    _padding2: u32,
+    position: [[f32; 4]; MAX_LIGHTS],
+    color: [[f32; 4]; MAX_LIGHTS],
+    num_lights: u32,
+    padding: [u32; 3],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -366,10 +367,10 @@ impl State {
             texture::Texture::create_depth_texture(&device, &surface_config, "depth_texture");
 
         let light_uniform = LightUniform {
-            position: [2.0, 2.0, 2.0],
-            _padding: 0,
-            color: [1.0, 1.0, 1.0],
-            _padding2: 0,
+            position: [[-10.0, 0.0, 0.0, 2000.0], [10.0, 0.0, 0.0, -200.0]],
+            color: [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]],
+            num_lights: 2,
+            padding: [0, 0, 0],
         };
 
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -486,8 +487,6 @@ impl State {
             )
         };
 
-        
-
         State {
             window,
             device,
@@ -601,18 +600,6 @@ impl State {
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
-        );
-
-        let old_position: cgmath::Vector3<_> = self.light_uniform.position.into();
-        self.light_uniform.position = (cgmath::Quaternion::from_axis_angle(
-            (0.0, 1.0, 0.0).into(),
-            cgmath::Deg(60.0 * dt.as_secs_f32()),
-        ) * old_position)
-            .into();
-        self.queue.write_buffer(
-            &self.light_buffer,
-            0,
-            bytemuck::cast_slice(&[self.light_uniform]),
         );
     }
 }
