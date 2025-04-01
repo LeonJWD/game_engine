@@ -20,7 +20,7 @@ use winit::{
     keyboard::PhysicalKey,
 };
 
-const NUM_INSTANCES_PER_ROW: u32 = 10;
+const NUM_INSTANCES_PER_ROW: u32 = 1;
 const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
     NUM_INSTANCES_PER_ROW as f32 * 0.5,
     0.0,
@@ -367,8 +367,8 @@ impl State {
             texture::Texture::create_depth_texture(&device, &surface_config, "depth_texture");
 
         let light_uniform = LightUniform {
-            position: [[-10.0, 0.0, 0.0, 2000.0], [10.0, 0.0, 0.0, -200.0]],
-            color: [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]],
+            position: [[0.0, 100.0, 0.0, 0.0], [0.0, -100.0, 0.0, 0.0]],
+            color: [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 1.0]],
             num_lights: 2,
             padding: [0, 0, 0],
         };
@@ -600,6 +600,11 @@ impl State {
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+        self.queue.write_buffer(
+            &self.light_buffer,
+            0,
+            bytemuck::cast_slice(&[self.light_uniform]),
         );
     }
 }

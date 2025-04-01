@@ -14,7 +14,9 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
     @location(1) tangent_position: vec3<f32>,
     @location(2) tangent_view_position: vec3<f32>,
-    @location(3) tangent_light_position: array<vec3<f32>,MAX_LIGHTS>,
+    @location(3)  world_normal:vec3<f32>,
+    @location(4)  world_tangent:vec3<f32>,
+    @location(5) world_bitangent:vec3<f32>,
 };
 
 struct CameraUniform {
@@ -93,20 +95,19 @@ fn vs_main(
         world_normal,
     ));
 
+    
+
     let world_position = model_matrix * vec4<f32>(model.position, 1.0);
 
     var out: VertexOutput;
+    out.world_normal=world_normal;
+    out.world_bitangent=world_bitangent;
+    out.world_tangent=world_tangent;
     out.clip_position = camera.view_proj * world_position;
     out.tex_coords = model.tex_coords;
     out.tangent_position = tangent_matrix * world_position.xyz;
     out.tangent_view_position = tangent_matrix * camera.view_pos.xyz;
 
-    var tlws = array<vec3<f32>,MAX_LIGHTS >();
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-      //TODO: erst Variable erstellen, dann nach Schleife zuweischen
-        tlws[i] = tangent_matrix * light_position[i];
-    }
-    out.tangent_light_position = tlws;
     return out;
 }
 
@@ -116,10 +117,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var light_position = array<vec3<f32>,MAX_LIGHTS>();
     var light_color = array<vec3<f32>,MAX_LIGHTS>();
 
+    let tangent_matrix = transpose(mat3x3<f32>(
+        in.world_tangent,
+        in.world_bitangent,
+        in.world_normal,
+    ));
+
+   
+
 
     for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
         light_position[i] = vec3<f32>(light.position[i][0], light.position[i][1], light.position[i][2]);
         light_color[i] = vec3<f32>(light.color[i][0], light.color[i][1], light.color[i][2]);
+    }
+
+      var tangent_light_position = array<vec3<f32>,MAX_LIGHTS >();
+    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
+        tangent_light_position[i] = tangent_matrix * light_position[i];
     }
 
     let object_color: vec4<f32>=textureSample(t_diffuse, s_diffuse, in.tex_coords);
@@ -131,7 +145,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let tangent_normal = object_normal.xyz * 2.0 - 1.0;
     var light_dir= array<vec3<f32>,MAX_LIGHTS>();
     for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        light_dir[i] = normalize(in.tangent_light_position[i] - in.tangent_position);
+        light_dir[i] = normalize(tangent_light_position[i] - in.tangent_position);
     }
 
 
