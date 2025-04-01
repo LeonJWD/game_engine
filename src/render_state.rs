@@ -8,10 +8,13 @@ use winit::{
 
 use cgmath::prelude::*;
 
-use crate::object_loader::{self, objectLoaderDescriptor};
 use crate::{
     model::{DrawModel, Model, ModelVertex, Vertex},
     texture,
+};
+use crate::{
+    object_loader::{self, objectLoaderDescriptor},
+    worldLoader,
 };
 
 use crate::camera::*;
@@ -27,14 +30,28 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
     NUM_INSTANCES_PER_ROW as f32 * 0.5,
 );
 
-const MAX_LIGHTS: usize = 2;
+pub const MAX_LIGHTS: usize = 2;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct LightUniform {
+pub struct LightUniform {
     position: [[f32; 4]; MAX_LIGHTS],
     color: [[f32; 4]; MAX_LIGHTS],
     num_lights: u32,
     padding: [u32; 3],
+}
+impl LightUniform {
+    pub fn new(
+        position: [[f32; 4]; MAX_LIGHTS],
+        color: [[f32; 4]; MAX_LIGHTS],
+        num_lights: u32,
+    ) -> Self {
+        return Self {
+            position: position,
+            color: color,
+            num_lights: num_lights,
+            padding: [0; 3],
+        };
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -127,12 +144,6 @@ impl CameraUniform {
         self.view_position = camera.position.to_homogeneous().into();
         self.view_proj = (projection.calc_matrix() * camera.calc_matrix()).into();
     }
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum RenderState {
-    Main,
-    Colored,
 }
 
 pub struct RenderState {
@@ -366,12 +377,18 @@ impl RenderState {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &surface_config, "depth_texture");
 
+        let world = worldLoader::World::new("res/testworld.json");
+
+        let light_uniform = world.lights();
+
+        /*
+
         let light_uniform = LightUniform {
             position: [[0.0, 100.0, 0.0, 0.0], [0.0, -100.0, 0.0, 0.0]],
             color: [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 1.0]],
             num_lights: 2,
             padding: [0, 0, 0],
-        };
+        };*/
 
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light VB"),
@@ -403,6 +420,9 @@ impl RenderState {
             label: None,
         });
 
+        let objs = world.load_obj_models(&device, &queue, &texture_bind_group_layout);
+
+        /* 
         const SPACE_BETWEEN: f32 = 3.0;
         let mut loaded_object_descriptors: Vec<object_loader::objectLoaderDescriptor> = (0
             ..NUM_INSTANCES_PER_ROW)
@@ -444,11 +464,11 @@ impl RenderState {
         });
 
         let objs = object_loader::load_models(
-            loaded_object_descriptors,
+            &loaded_object_descriptors,
             &device,
             &queue,
             &texture_bind_group_layout,
-        );
+        );*/
 
         let instance_data = objs
             .instances

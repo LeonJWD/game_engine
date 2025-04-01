@@ -1,7 +1,6 @@
-
+use crate::model::Model;
 use crate::render_state;
-use crate::model::{Model};
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct objectLoaderDescriptor {
     pub path: String,
     pub position: cgmath::Vector3<f32>,
@@ -36,7 +35,7 @@ pub fn load_object(
     }
 }
 pub fn load_models(
-    descs: Vec<objectLoaderDescriptor>,
+    descs: &Vec<objectLoaderDescriptor>,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     layout: &wgpu::BindGroupLayout,
@@ -47,7 +46,7 @@ pub fn load_models(
     let mut models = Vec::new();
     let mut instance_ranges = Vec::new();
 
-    let mut sorted_descs = descs;
+    let mut sorted_descs = descs.clone();
     sorted_descs.sort_by_key(|o| o.path.clone());
     //println!("{:?}", sorted_descs);
 
