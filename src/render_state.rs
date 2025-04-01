@@ -135,7 +135,7 @@ pub enum RenderState {
     Colored,
 }
 
-pub struct State {
+pub struct RenderState {
     window: Arc<Window>,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -161,7 +161,7 @@ pub struct State {
     mouse_pressed: bool,
 }
 
-impl State {
+impl RenderState {
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput {
@@ -250,7 +250,7 @@ impl State {
         })
     }
 
-    pub async fn new(window: Arc<Window>) -> State {
+    pub async fn new(window: Arc<Window>) -> RenderState {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions::default())
@@ -487,7 +487,7 @@ impl State {
             )
         };
 
-        State {
+        RenderState {
             window,
             device,
             queue,

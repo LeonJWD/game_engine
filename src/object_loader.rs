@@ -1,5 +1,5 @@
 
-use crate::app_state;
+use crate::render_state;
 use crate::model::{Model};
 #[derive(Debug)]
 pub struct objectLoaderDescriptor {
@@ -9,12 +9,12 @@ pub struct objectLoaderDescriptor {
 }
 #[derive(Debug)]
 pub struct loadedObject {
-    instance: app_state::Instance,
+    instance: render_state::Instance,
     model: Model,
 }
 #[derive(Debug)]
 pub struct LoadedObects {
-    pub instances: Vec<app_state::Instance>,
+    pub instances: Vec<render_state::Instance>,
     pub models: Vec<Model>,
     pub instance_ranges: Vec<std::ops::Range<u32>>,
 }
@@ -26,7 +26,7 @@ pub fn load_object(
     layout: &wgpu::BindGroupLayout,
 ) -> loadedObject {
     let obj_model = Model::load_model(&desc.path, device, queue, layout).unwrap();
-    let instance = app_state::Instance {
+    let instance = render_state::Instance {
         position: desc.position,
         rotation: desc.rotation,
     };

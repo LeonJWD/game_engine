@@ -1,9 +1,6 @@
-use std::{
-    sync::Arc,
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
-use crate::app_state::State;
+use crate::render_state::RenderState;
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, WindowEvent},
@@ -13,7 +10,7 @@ use winit::{
 
 #[derive(Default)]
 pub struct App {
-    state: Option<State>,
+    state: Option<RenderState>,
 }
 
 impl ApplicationHandler for App {
@@ -23,7 +20,7 @@ impl ApplicationHandler for App {
                 .create_window(Window::default_attributes())
                 .unwrap(),
         );
-        let state = pollster::block_on(State::new(window.clone()));
+        let state = pollster::block_on(RenderState::new(window.clone()));
 
         self.state = Some(state);
 

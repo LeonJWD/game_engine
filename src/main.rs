@@ -4,7 +4,7 @@ use app::App;
 use winit::event_loop::{ControlFlow, EventLoop};
 
 mod app;
-mod app_state;
+mod render_state;
 mod camera;
 mod model;
 mod object_loader;
