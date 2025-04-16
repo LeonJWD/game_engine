@@ -7,8 +7,9 @@ mod camera;
 mod model;
 mod object_loader;
 mod render_state;
+mod simulation_state;
 mod texture;
-mod worldLoader;
+mod world_loader;
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();

@@ -1,4 +1,5 @@
 use image::GenericImageView;
+use json::object;
 use std::{sync::Arc, time::Duration};
 use wgpu::util::DeviceExt;
 use winit::{
@@ -9,12 +10,13 @@ use winit::{
 use cgmath::prelude::*;
 
 use crate::{
-    model::{DrawModel, Model, ModelVertex, Vertex},
+    model::{self, DrawModel, Model, ModelVertex, Vertex},
+    object_loader::LoadedObects,
     texture,
 };
 use crate::{
     object_loader::{self, objectLoaderDescriptor},
-    worldLoader,
+    world_loader,
 };
 
 use crate::camera::*;
@@ -154,12 +156,12 @@ pub struct RenderState {
     surface: wgpu::Surface<'static>,
     surface_format: wgpu::TextureFormat,
     render_pipeline: wgpu::RenderPipeline,
-    camera: Camera,
+    pub camera: Camera,
     camera_uniform: CameraUniform,
     projection: Projection,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    pub camera_controller: CameraController,
+    pub camera_controller: PlayerController,
     depth_texture: texture::Texture,
     obj_models: Vec<Model>,
     instance_ranges: Vec<std::ops::Range<u32>>,
@@ -170,36 +172,10 @@ pub struct RenderState {
     light_bind_group_layout: wgpu::BindGroupLayout,
     light_bind_group: wgpu::BindGroup,
     mouse_pressed: bool,
+    pub loaded_objects: LoadedObects,
 }
 
 impl RenderState {
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
-        match event {
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key: PhysicalKey::Code(key),
-                        state,
-                        ..
-                    },
-                ..
-            } => self.camera_controller.process_keyboard(*key, *state),
-            WindowEvent::MouseWheel { delta, .. } => {
-                self.camera_controller.process_scroll(delta);
-                true
-            }
-            WindowEvent::MouseInput {
-                button: MouseButton::Left,
-                state,
-                ..
-            } => {
-                self.mouse_pressed = *state == ElementState::Pressed;
-                true
-            }
-
-            _ => false,
-        }
-    }
     fn create_render_pipeline(
         device: &wgpu::Device,
         layout: &wgpu::PipelineLayout,
@@ -328,7 +304,7 @@ impl RenderState {
 
         let mut camera_uniform = CameraUniform::new();
         let projection = Projection::new(size.width, size.height, cgmath::Deg(45.), 0.1, 100.0);
-        let camera_controller = CameraController::new(4.0, 0.4);
+        let camera_controller = PlayerController::new(4.0, 0.4);
         camera_uniform.update_view_proj(&camera, &projection);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -377,9 +353,11 @@ impl RenderState {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &surface_config, "depth_texture");
 
-        let world = worldLoader::World::new("res/testworld.json");
+        let world = world_loader::World::new("res/testworld.json");
 
         let light_uniform = world.lights();
+
+        //Fprintln!("{:?}", world);
 
         /*
 
@@ -422,7 +400,7 @@ impl RenderState {
 
         let objs = world.load_obj_models(&device, &queue, &texture_bind_group_layout);
 
-        /* 
+        /*
         const SPACE_BETWEEN: f32 = 3.0;
         let mut loaded_object_descriptors: Vec<object_loader::objectLoaderDescriptor> = (0
             ..NUM_INSTANCES_PER_ROW)
@@ -522,15 +500,16 @@ impl RenderState {
             camera_bind_group,
             camera_controller,
             depth_texture,
-            obj_models: objs.models,
+            obj_models: objs.models.clone(),
             instance_buffer,
-            instances: objs.instances,
-            instance_ranges: objs.instance_ranges,
+            instances: objs.instances.clone(),
+            instance_ranges: objs.instance_ranges.clone(),
             light_uniform,
             light_buffer,
             light_bind_group_layout,
             light_bind_group,
             mouse_pressed: false,
+            loaded_objects: objs,
         }
     }
     pub fn get_window(&self) -> &Window {
@@ -555,6 +534,7 @@ impl RenderState {
             texture::Texture::create_depth_texture(&self.device, &surface_config, "depth_texture");
     }
     pub fn render(&mut self) {
+        //println!("{:?}", self.camera.pitch);
         let surface_texture = self
             .surface
             .get_current_texture()
@@ -612,8 +592,8 @@ impl RenderState {
         self.window.pre_present_notify();
         surface_texture.present();
     }
-    pub fn update(&mut self, dt: Duration) {
-        self.camera_controller.update_camera(&mut self.camera, dt);
+    pub fn update_camera(&mut self) {
+        //self.camera_controller.update_camera(&mut self.camera, dt);
         self.camera_uniform
             .update_view_proj(&self.camera, &self.projection);
         self.queue.write_buffer(

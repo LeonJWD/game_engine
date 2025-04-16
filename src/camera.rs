@@ -5,6 +5,8 @@ use winit::dpi::PhysicalPosition;
 use winit::event::*;
 use winit::keyboard::KeyCode;
 
+use crate::simulation_state::Player;
+
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
@@ -18,8 +20,8 @@ const SAFE_FRAC_PI_2: f32 = FRAC_PI_2 - 0.0001;
 #[derive(Debug)]
 pub struct Camera {
     pub position: Point3<f32>,
-    yaw: Rad<f32>,
-    pitch: Rad<f32>,
+    pub yaw: Rad<f32>,
+    pub pitch: Rad<f32>,
 }
 impl Camera {
     pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(
@@ -69,7 +71,7 @@ impl Projection {
     }
 }
 
-pub struct CameraController {
+pub struct PlayerController {
     ammount_left: f32,
     ammout_right: f32,
     ammount_forward: f32,
@@ -82,7 +84,7 @@ pub struct CameraController {
     speed: f32,
     sensitivity: f32,
 }
-impl CameraController {
+impl PlayerController {
     pub fn new(speed: f32, sensitivity: f32) -> Self {
         Self {
             ammount_left: 0.0,
@@ -143,34 +145,35 @@ impl CameraController {
             MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => *scroll as f32,
         };
     }
-    pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
-        let dt = dt.as_secs_f32();
+    pub fn update_player(&mut self, player: &mut Player) {
+        let (yaw_sin, yaw_cos) = player.yaw.0.sin_cos();
 
-        let (yaw_sin, yaw_cos) = camera.yaw.0.sin_cos();
         let forward = Vector3::new(yaw_cos, 0.0, yaw_sin).normalize();
         let right = Vector3::new(-yaw_sin, 0.0, yaw_cos).normalize();
-        camera.position +=
-            forward * (self.ammount_forward - self.ammount_backward) * self.speed * dt;
-        camera.position += right * (self.ammout_right - self.ammount_left) * self.speed * dt;
+        let mut speed = Vector3::new(0.0, 0.0, 0.0);
+        speed += forward * (self.ammount_forward - self.ammount_backward) * self.speed;
+        speed += right * (self.ammout_right - self.ammount_left) * self.speed;
 
-        let (pitch_sin, pitch_cos) = camera.pitch.0.sin_cos();
+        let (pitch_sin, pitch_cos) = player.pitch.0.sin_cos();
         let scrollward =
             Vector3::new(pitch_cos * yaw_cos, pitch_sin, pitch_sin * yaw_sin).normalize();
-        camera.position += scrollward * self.scroll * self.speed * self.sensitivity * dt;
+        speed += scrollward * self.scroll * self.speed * self.sensitivity;
         self.scroll = 0.0;
 
-        camera.position.y += (self.amount_up - self.ammount_down) * self.speed * dt;
+        speed.y += (self.amount_up - self.ammount_down) * self.speed;
 
-        camera.yaw += Rad(self.rotate_horizontal) * self.sensitivity * dt;
-        camera.pitch += Rad(-self.rotate_vertical) * self.sensitivity * dt;
+        player.movement_input = speed;
+
+        player.yaw_input += Rad(self.rotate_horizontal) * self.sensitivity;
+        player.pitch_input += Rad(-self.rotate_vertical) * self.sensitivity;
 
         self.rotate_horizontal = 0.0;
         self.rotate_vertical = 0.0;
 
-        if camera.pitch <= -Rad(SAFE_FRAC_PI_2) {
-            camera.pitch = -Rad(SAFE_FRAC_PI_2);
-        } else if camera.pitch > Rad(SAFE_FRAC_PI_2) {
-            camera.pitch = Rad(SAFE_FRAC_PI_2);
+        if player.pitch <= -Rad(SAFE_FRAC_PI_2) {
+            player.pitch = -Rad(SAFE_FRAC_PI_2);
+        } else if player.pitch > Rad(SAFE_FRAC_PI_2) {
+            player.pitch = Rad(SAFE_FRAC_PI_2);
         }
     }
 }

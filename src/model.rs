@@ -86,6 +86,8 @@ pub struct Mesh {
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
     pub material: usize,
+    pub vertices: Vec<ModelVertex>,
+    pub indices: Vec<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -172,6 +174,7 @@ impl Model {
                     .collect::<Vec<_>>();
 
                 let indices = &m.mesh.indices;
+
                 let mut triangles_included = vec![0; vertices.len()];
 
                 // Calculate tangents and bitangets. We're going to
@@ -259,6 +262,8 @@ impl Model {
                     index_buffer,
                     num_elements: m.mesh.indices.len() as u32,
                     material: m.mesh.material_id.unwrap_or(0),
+                    vertices,
+                    indices: indices.clone(),
                 }
             })
             .collect::<Vec<_>>();

@@ -40,10 +40,12 @@ impl World {
                 z: pos[2].as_f32().unwrap(),
             };
 
+            //TODO: correct rotation around x y and z axis
+
             let rotation = cgmath::Quaternion::from_axis_angle(
                 position,
                 cgmath::Deg(object["rotation"].as_f32().unwrap()),
-            );
+            ); //Error: seperate x,y and z
             let desc = object_loader::objectLoaderDescriptor {
                 path: object["path"].to_string(),
                 position,

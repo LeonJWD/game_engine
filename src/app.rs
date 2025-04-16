@@ -1,6 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use crate::render_state::RenderState;
+use crate::camera::PlayerController;
+use crate::simulation_state::{self, tickable};
+use crate::{render_state::RenderState, simulation_state::SimulationState};
+use winit::event::KeyEvent;
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, WindowEvent},
@@ -8,9 +11,20 @@ use winit::{
     window::{Window, WindowId},
 };
 
-#[derive(Default)]
 pub struct App {
-    state: Option<RenderState>,
+    render_state: Option<RenderState>,
+    simulation_state: Option<SimulationState>,
+    last_simulation: std::time::Instant,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            render_state: None,
+            simulation_state: None,
+            last_simulation: std::time::Instant::now(),
+        }
+    }
 }
 
 impl ApplicationHandler for App {
@@ -20,9 +34,22 @@ impl ApplicationHandler for App {
                 .create_window(Window::default_attributes())
                 .unwrap(),
         );
-        let state = pollster::block_on(RenderState::new(window.clone()));
+        let render_state = pollster::block_on(RenderState::new(window.clone()));
 
-        self.state = Some(state);
+        self.render_state = Some(render_state);
+
+        let simulation_state =
+            SimulationState::new(&self.render_state.as_ref().unwrap().loaded_objects);
+        self.simulation_state = Some(simulation_state);
+
+        let simulation_state = self.simulation_state.as_mut().unwrap();
+        let render_state = self.render_state.as_mut().unwrap();
+
+        let player = &mut simulation_state.player;
+
+        player.update_render_state(render_state);
+
+        //render_state.render();
 
         window.request_redraw();
     }
@@ -32,9 +59,13 @@ impl ApplicationHandler for App {
         device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
-        let state = self.state.as_mut().unwrap();
+        let simulation_state = self.simulation_state.as_mut().unwrap();
         if let DeviceEvent::MouseMotion { delta } = event {
-            state.camera_controller.proccess_mouse(delta.0, delta.1);
+            //TODO: ?move from render_state to simulation_state?
+            simulation_state
+                .player_controller
+                .proccess_mouse(delta.0, delta.1);
+            println!("Mouse input");
         }
     }
     fn window_event(
@@ -43,7 +74,8 @@ impl ApplicationHandler for App {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let state = self.state.as_mut().unwrap();
+        let render_state = self.render_state.as_mut().unwrap();
+        let simulation_state = self.simulation_state.as_mut().unwrap();
         if event == WindowEvent::CloseRequested {
             println!("The close button was pressed. stopping");
             event_loop.exit();
@@ -51,16 +83,32 @@ impl ApplicationHandler for App {
 
         match event {
             WindowEvent::RedrawRequested => {
-                state.render();
-                state.get_window().request_redraw();
+                render_state.render();
+                render_state.get_window().request_redraw();
+                //println!("redraw!")
             }
             WindowEvent::Resized(size) => {
-                state.resize(size);
+                render_state.resize(size);
             }
 
             _ => (),
         }
-        state.input(&event);
-        state.update(Duration::from_millis(10));
+
+        let input_happened = simulation_state.input(&event);
+        let player = &mut simulation_state.player;
+        //   if input_happened {
+        simulation_state.player_controller.update_player(player);
+        player.tick(self.last_simulation.elapsed(), &simulation_state.bvh);
+        player.update_render_state(render_state);
+        //render_state.update_camera();
+        //println!("input happened");
+        //    }
+        self.last_simulation = std::time::Instant::now();
     }
+}
+
+impl App {
+    //input handling
+    //mouse buttons add speed to simulationState
+    //new camera update function -> replaces CameraController.update
 }
