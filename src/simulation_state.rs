@@ -112,7 +112,7 @@ impl SimulationState {
         Self {
             player,
             bvh,
-            player_controller: PlayerController::new(4.1, 1.1),
+            player_controller: PlayerController::new(4.1, 5.1),
         }
     }
 }
@@ -179,6 +179,8 @@ impl BVH {
         //create distance matrix
         let mut dist_matrix = Vec::with_capacity(volumes.len());
         let mut index_vec = Vec::with_capacity(volumes.len());
+
+        
         for i in 0..volumes.len() {
             let mut dist_vec = Vec::with_capacity(volumes.len());
             index_vec.push(i);
@@ -231,20 +233,16 @@ impl BVH {
 
             //update dists
             //TODO: more efficient since it is not nessescary to loop over all elements
-            //TODO: broken
             for i in 0..dist_matrix.len() {
-                for j in i..dist_matrix.len() {
+
                     //fill in the distance matrix with the merged distances
-                    if i != j {
-                        if j == min_i {
-                            dist_matrix[i][j] =
+                
+                        if i != min_i {
+                            dist_matrix[i][min_i] =
                                 f32::max(dist_matrix[i][min_i], dist_matrix[min_j][i]);
                         }
-                    } else {
-                        dist_matrix[i][j] = 0.0;
-                    }
                 }
-            }
+                dist_matrix[min_i][min_i]=0.0;
 
             println!("dist_matrix: {:?}", dist_matrix.len());
             //remove the seccond volume from the matrix
@@ -336,6 +334,7 @@ impl Player {
 
 impl tickable for Player {
     fn tick(&mut self, dt: std::time::Duration, bvh: &BVH) {
+        //println!("{:?}",dt.as_secs_f32());
         self.speed += self.gravity * dt.as_secs_f32();
         //collison check with all objects
         //self.handle_collision(bvh);

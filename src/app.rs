@@ -65,7 +65,7 @@ impl ApplicationHandler for App {
             simulation_state
                 .player_controller
                 .proccess_mouse(delta.0, delta.1);
-            println!("Mouse input");
+            //println!("Mouse input");
         }
     }
     fn window_event(
