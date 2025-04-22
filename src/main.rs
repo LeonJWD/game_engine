@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate time_test;
 use anyhow::Ok;
 use app::App;
 use winit::event_loop::{ControlFlow, EventLoop};
@@ -8,6 +10,7 @@ mod model;
 mod object_loader;
 mod render_state;
 mod simulation_state;
+mod test;
 mod texture;
 mod world_loader;
 

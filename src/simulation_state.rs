@@ -180,7 +180,6 @@ impl BVH {
         let mut dist_matrix = Vec::with_capacity(volumes.len());
         let mut index_vec = Vec::with_capacity(volumes.len());
 
-        
         for i in 0..volumes.len() {
             let mut dist_vec = Vec::with_capacity(volumes.len());
             index_vec.push(i);
@@ -234,17 +233,15 @@ impl BVH {
             //update dists
             //TODO: more efficient since it is not nessescary to loop over all elements
             for i in 0..dist_matrix.len() {
+                //fill in the distance matrix with the merged distances
 
-                    //fill in the distance matrix with the merged distances
-                
-                        if i != min_i {
-                            dist_matrix[i][min_i] =
-                                f32::max(dist_matrix[i][min_i], dist_matrix[min_j][i]);
-                        }
+                if i != min_i {
+                    dist_matrix[i][min_i] = f32::max(dist_matrix[i][min_i], dist_matrix[min_j][i]);
                 }
-                dist_matrix[min_i][min_i]=0.0;
+            }
+            dist_matrix[min_i][min_i] = 0.0;
 
-            println!("dist_matrix: {:?}", dist_matrix.len());
+            //println!("dist_matrix: {:?}", dist_matrix.len());
             //remove the seccond volume from the matrix
             dist_matrix.remove(min_j);
             for i in 0..dist_matrix.len() {
