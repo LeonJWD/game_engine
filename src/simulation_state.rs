@@ -60,7 +60,8 @@ impl SimulationState {
         //when implemented -> load physics objects
 
         //iterate through the different kinds of objects
-        let mut triangles = Vec::new();
+        let mut bvh = BVH::new(Vec::new());
+
         for i in 0..objects.instance_ranges.len() {
             let range = objects.instance_ranges[i].clone();
             let model = &objects.models[i as usize];
@@ -69,7 +70,12 @@ impl SimulationState {
 
                 //get of model and apply instance offset and rotation
 
+                //create a bvh for each mesh and merge the different bvh
+                //TODO: multithreading of bvh creation
+                //TODO: calculate a bvh for each model type only once. Use offset for new instances.
+
                 for mesh in &model.meshes {
+                    let mut triangles = Vec::new();
                     for i in mesh.indices.chunks(3) {
                         //get vertex positions and normals
                         let a = Point3::from(mesh.vertices[i[0] as usize].position);
@@ -99,12 +105,15 @@ impl SimulationState {
                         };
                         triangles.push(triangle);
                     }
+
+                    let mut new_bvh = BVH::new(triangles);
+                    bvh.merge(&mut new_bvh);
                 }
             }
         }
 
         //create a bvh from the triangles
-        let bvh = BVH::new(triangles);
+        //let bvh = BVH::new(triangles);
 
         //create a player object
         let player = Player::new();
@@ -150,6 +159,40 @@ struct Triangle {
     normal: Vector3<f32>,
 }
 impl BVH {
+    pub fn merge(&mut self, other: &mut BVH) {
+        if (self.volumes.len() != 0) {
+            let old_head_1 = self.head;
+            let old_head_2 = other.head;
+
+            let center = (self.volumes[self.head].center + other.volumes[other.head].center) / 2.0;
+            let new_radius = (self.volumes[self.head]
+                .center
+                .distance(other.volumes[other.head].center))
+                + f32::max(self.volumes[self.head].size, other.volumes[other.head].size);
+
+            let new_head = BoundingVolume {
+                center: center,
+                size: new_radius,
+                reference_triangle: None,
+            };
+
+            self.volumes.append(&mut other.volumes);
+            self.children_relations
+                .append(&mut other.children_relations);
+            //self.parent_relations.append(&mut other.parent_relations);
+
+            self.volumes.push(new_head);
+            self.head = self.volumes.len() - 1;
+
+            let head_childrens = vec![old_head_1, old_head_2];
+            self.children_relations.push(head_childrens);
+        } else {
+            self.children_relations = other.children_relations.clone();
+            self.head = other.head;
+            self.parent_relations = other.parent_relations.clone();
+            self.volumes = other.volumes.clone();
+        }
+    }
     pub fn new(triangles: Vec<Triangle>) -> Self {
         //TODO: check if correct
 
@@ -241,7 +284,7 @@ impl BVH {
             }
             dist_matrix[min_i][min_i] = 0.0;
 
-            //println!("dist_matrix: {:?}", dist_matrix.len());
+            println!("dist_matrix: {:?}", dist_matrix.len());
             //remove the seccond volume from the matrix
             dist_matrix.remove(min_j);
             for i in 0..dist_matrix.len() {
@@ -253,7 +296,7 @@ impl BVH {
             volumes: volumes.clone(),
             children_relations: children_relations,
             parent_relations: Vec::new(),
-            head: volumes.len() - 1,
+            head: max(volumes.len(), 1) - 1, //prevent overflows when list is empty
         }
     }
 }
