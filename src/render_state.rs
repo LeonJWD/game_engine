@@ -1,29 +1,18 @@
 use image::GenericImageView;
-use json::object;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use wgpu::util::DeviceExt;
-use winit::{
-    event::{MouseButton, WindowEvent},
-    window::Window,
-};
+use winit::window::Window;
 
 use cgmath::prelude::*;
 
 use crate::{
-    model::{self, DrawModel, Model, ModelVertex, Vertex},
+    model::{DrawModel, Model, ModelVertex, Vertex},
     object_loader::LoadedObects,
     texture,
 };
-use crate::{
-    object_loader::{self, objectLoaderDescriptor},
-    world_loader,
-};
+use crate::world_loader;
 
 use crate::camera::*;
-use winit::{
-    event::{ElementState, KeyEvent},
-    keyboard::PhysicalKey,
-};
 
 const NUM_INSTANCES_PER_ROW: u32 = 1;
 const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(

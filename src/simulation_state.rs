@@ -1,19 +1,16 @@
-use core::num;
-use std::{cmp::max, io::SeekFrom, ops::Bound};
+use std::cmp::max;
 
 use cgmath::{
-    Deg, EuclideanSpace, InnerSpace, MetricSpace, Point3, Quaternion, Rad, Rotation, Rotation3,
+    EuclideanSpace, MetricSpace, Point3, Rad, Rotation,
     Vector3,
 };
-use json::object;
 use winit::event::{KeyEvent, MouseButton, WindowEvent};
 use winit::keyboard::PhysicalKey;
 
-use crate::camera::{self, PlayerController};
+use crate::camera::{PlayerController};
 use crate::{
-    model::{self, ModelVertex, Vertex},
     object_loader::LoadedObects,
-    render_state::{self, Instance, RenderState},
+    render_state::{RenderState},
 };
 
 pub struct SimulationState {
@@ -160,7 +157,7 @@ struct Triangle {
 }
 impl BVH {
     pub fn merge(&mut self, other: &mut BVH) {
-        if (self.volumes.len() != 0) {
+        if self.volumes.len() != 0 {
             let old_head_1 = self.head;
             let old_head_2 = other.head;
 
@@ -344,7 +341,7 @@ impl Player {
         let mut queue = Vec::new();
         queue.push(other_index);
 
-        while (!queue.is_empty()) {
+        while !queue.is_empty() {
             let current = queue.pop().unwrap();
             if self.bounding_volume.collides_width(&bvh.volumes[current]) {
                 let children = &bvh.children_relations[current];

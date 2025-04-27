@@ -1,9 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use crate::camera::PlayerController;
-use crate::simulation_state::{self, tickable};
+use crate::simulation_state::{tickable};
 use crate::{render_state::RenderState, simulation_state::SimulationState};
-use winit::event::KeyEvent;
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, WindowEvent},

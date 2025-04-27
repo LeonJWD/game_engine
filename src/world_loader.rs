@@ -1,5 +1,5 @@
 use crate::{
-    model, object_loader,
+    object_loader,
     render_state::{self, LightUniform},
 };
 use cgmath::{self, Rotation3};
