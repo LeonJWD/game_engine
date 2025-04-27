@@ -4,7 +4,7 @@ use super::*;
 use crate::{object_loader::LoadedObects, world_loader};
 
 fn load_world() -> world_loader::World {
-    return world_loader::World::new("res/testworld.json");
+    world_loader::World::new("res/testworld.json")
 }
 
 #[test]
@@ -60,7 +60,7 @@ async fn load_objects() -> LoadedObects {
                 },
             ],
         });
-    return world.load_obj_models(&device, &queue, &texture_bind_group_layout);
+    world.load_obj_models(&device, &queue, &texture_bind_group_layout)
 }
 
 #[test]

@@ -36,12 +36,12 @@ impl LightUniform {
         color: [[f32; 4]; MAX_LIGHTS],
         num_lights: u32,
     ) -> Self {
-        return Self {
-            position: position,
-            color: color,
-            num_lights: num_lights,
+        Self {
+            position,
+            color,
+            num_lights,
             padding: [0; 3],
-        };
+        }
     }
 }
 

@@ -61,7 +61,7 @@ impl SimulationState {
 
         for i in 0..objects.instance_ranges.len() {
             let range = objects.instance_ranges[i].clone();
-            let model = &objects.models[i as usize];
+            let model = &objects.models[i];
             for j in range {
                 let instance = objects.instances[j as usize];
 
@@ -95,10 +95,10 @@ impl SimulationState {
                         let c = c + instance.position;
 
                         let triangle = Triangle {
-                            a: a,
-                            b: b,
-                            c: c,
-                            normal: normal,
+                            a,
+                            b,
+                            c,
+                            normal,
                         };
                         triangles.push(triangle);
                     }
@@ -157,7 +157,7 @@ struct Triangle {
 }
 impl BVH {
     pub fn merge(&mut self, other: &mut BVH) {
-        if self.volumes.len() != 0 {
+        if !self.volumes.is_empty() {
             let old_head_1 = self.head;
             let old_head_2 = other.head;
 
@@ -168,7 +168,7 @@ impl BVH {
                 + f32::max(self.volumes[self.head].size, other.volumes[other.head].size);
 
             let new_head = BoundingVolume {
-                center: center,
+                center,
                 size: new_radius,
                 reference_triangle: None,
             };
@@ -230,7 +230,7 @@ impl BVH {
             }
             dist_matrix.push(dist_vec);
         }
-        while dist_matrix.len() >= 1 {
+        while !dist_matrix.is_empty() {
             //get minimum distance
             let mut min_i = 0;
             let mut min_j = 0;
@@ -290,7 +290,7 @@ impl BVH {
 
         Self {
             volumes: volumes.clone(),
-            children_relations: children_relations,
+            children_relations,
             parent_relations: Vec::new(),
             head: max(volumes.len(), 1) - 1, //prevent overflows when list is empty
         }
@@ -318,12 +318,12 @@ pub struct Player {
 }
 impl Player {
     fn new() -> Self {
-        return Self {
+        Self {
             position: Point3::from([0.0, 0.0, 0.0]),
-            yaw: Rad { 0: -90.0 },
-            pitch: Rad { 0: -20.0 },
-            yaw_input: Rad { 0: 0.0 },
-            pitch_input: Rad { 0: 0.0 },
+            yaw: Rad(-90.0),
+            pitch: Rad(-20.0),
+            yaw_input: Rad(0.0),
+            pitch_input: Rad(0.0),
             speed: Vector3::from([0.0, 0.0, 0.0]),
             movement_input: Vector3::from([0.0, 0.0, 0.0]),
             gravity: Vector3::from([0.0, 0.0, 0.0]),
@@ -332,7 +332,7 @@ impl Player {
                 size: 1.0,
                 reference_triangle: None,
             },
-        };
+        }
     }
 
     fn get_collision_volume(&self, other_index: usize, bvh: &BVH) -> Option<BoundingVolume> {
@@ -341,18 +341,18 @@ impl Player {
         let mut queue = Vec::new();
         queue.push(other_index);
 
-        while !queue.is_empty() {
-            let current = queue.pop().unwrap();
+        while let Some(current) = queue.pop() {
+            
             if self.bounding_volume.collides_width(&bvh.volumes[current]) {
                 let children = &bvh.children_relations[current];
-                if children.len() != 0 {
+                if !children.is_empty() {
                     queue.append(&mut children.clone());
                 } else {
-                    return Some(bvh.volumes[current].clone());
+                    return Some(bvh.volumes[current]);
                 }
             }
         }
-        return None;
+        None
     }
 
     fn handle_collision(&mut self, bvh: &BVH) {
@@ -363,7 +363,7 @@ impl Player {
             let collided_object = collided_object.unwrap();
             let center_point = collided_object.center;
             //TODO: reflect speed along normal
-            let vert_normal = Vector3::from(collided_object.reference_triangle.unwrap().normal);
+            let vert_normal = collided_object.reference_triangle.unwrap().normal;
             //self.speed = self.speed - 2.0 * (self.speed.dot(vert_normal)) * vert_normal;
             self.speed = Vector3::from([0.0, 0.0, 0.0]);
             //TODO: move along normal out of object
