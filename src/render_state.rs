@@ -534,6 +534,7 @@ impl RenderState {
             texture::Texture::create_depth_texture(&self.device, &surface_config, "depth_texture");
     }
     pub fn render(&mut self) {
+        //println!("render");
         //println!("{:?}", self.camera.pitch);
         let surface_texture = self
             .surface

@@ -274,7 +274,6 @@ impl BVH {
             index_vec.remove(min_j);
 
             //update dists
-            //TODO: more efficient since it is not nessescary to loop over all elements
             for i in 0..dist_matrix.len() {
                 //fill in the distance matrix with the merged distances
 
@@ -323,7 +322,7 @@ pub struct Player {
 impl Player {
     fn new() -> Self {
         return Self {
-            position: Point3::from([0.0, 5.0, 10.0]),
+            position: Point3::from([0.0, 0.0, 0.0]),
             yaw: Rad { 0: -90.0 },
             pitch: Rad { 0: -20.0 },
             yaw_input: Rad { 0: 0.0 },
@@ -360,14 +359,20 @@ impl Player {
     }
 
     fn handle_collision(&mut self, bvh: &BVH) {
+        self.bounding_volume.center = self.position.to_vec();
         let collided_object = self.get_collision_volume(bvh.head, bvh);
         //collision detected
         if collided_object.is_some() {
-            //reflect speed along normal
-            let vert_normal =
-                Vector3::from(collided_object.unwrap().reference_triangle.unwrap().normal);
-            self.speed = self.speed - 2.0 * (self.speed.dot(vert_normal)) * vert_normal;
+            let collided_object = collided_object.unwrap();
+            let center_point = collided_object.center;
+            //TODO: reflect speed along normal
+            let vert_normal = Vector3::from(collided_object.reference_triangle.unwrap().normal);
+            //self.speed = self.speed - 2.0 * (self.speed.dot(vert_normal)) * vert_normal;
+            self.speed = Vector3::from([0.0, 0.0, 0.0]);
             //TODO: move along normal out of object
+            //TODO: get dist from surface instead of center point
+            let dist = self.position.to_vec().distance(center_point);
+            self.position += vert_normal * (collided_object.size - dist);
         }
     }
 }
@@ -377,7 +382,7 @@ impl tickable for Player {
         //println!("{:?}",dt.as_secs_f32());
         self.speed += self.gravity * dt.as_secs_f32();
         //collison check with all objects
-        //self.handle_collision(bvh);
+        self.handle_collision(bvh);
         self.position += self.speed * dt.as_secs_f32();
         self.position += self.movement_input * dt.as_secs_f32();
         //TODO: take rotationspeed as input from controller instead direct rotation to be able to apply dt
@@ -387,7 +392,7 @@ impl tickable for Player {
         self.pitch += self.pitch_input * dt.as_secs_f32();
         self.yaw_input.0 = 0.0;
         self.pitch_input.0 = 0.0;
-        //println!("{:?}", self.position);
+        println!("{:?}", self.position);
     }
     fn update_render_state(&mut self, render_state: &mut RenderState) {
         render_state.camera.position = self.position;

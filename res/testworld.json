@@ -8,15 +8,6 @@
             ],
             "rotation": 0.0,
             "path": "res/cube.obj"
-        },
-        {
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "rotation": 0.0,
-            "path": "res/cube.obj"
         }
     ],
     "lights": [
