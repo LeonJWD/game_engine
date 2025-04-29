@@ -1,7 +1,9 @@
 
+use pollster::FutureExt;
+
 #[cfg(test)]
 use super::*;
-use crate::{object_loader::LoadedObects, world_loader};
+use crate::{object_loader::LoadedObects, simulation_state::SimulationState, world_loader};
 
 fn load_world() -> world_loader::World {
     world_loader::World::new("res/testworld.json")

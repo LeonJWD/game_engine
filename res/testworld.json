@@ -7,7 +7,7 @@
                 0.0
             ],
             "rotation": 0.0,
-            "path": "res/cube.obj"
+            "path": "res/gameworld.obj"
         }
     ],
     "lights": [
