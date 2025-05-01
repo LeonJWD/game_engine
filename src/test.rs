@@ -74,5 +74,5 @@ fn load_world_onjects() {
 fn create_simulationstate() {
     let objs = load_objects().block_on();
     time_test!("SimulationState creation time");
-    let s = SimulationState::new(&objs);
+    let _s = SimulationState::new(&objs);
 }

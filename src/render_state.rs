@@ -6,9 +6,7 @@ use winit::window::Window;
 use cgmath::prelude::*;
 
 use crate::{
-    model::{DrawModel, Model, ModelVertex, Vertex},
-    object_loader::LoadedObects,
-    texture,
+    camera, model::{DrawModel, Model, ModelVertex, Vertex}, object_loader::LoadedObects, texture
 };
 use crate::world_loader;
 
@@ -22,6 +20,17 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 );
 
 pub const MAX_LIGHTS: usize = 2;
+#[derive(Debug, Clone, Copy)]
+pub struct SpotLight{
+    camera:camera::Camera,
+    color:[f32;3]
+}
+impl SpotLight{
+    pub fn new(color: [f32;3], cam:camera::Camera)->Self{
+        return SpotLight { camera:cam, color}
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
@@ -162,6 +171,7 @@ pub struct RenderState {
     light_bind_group: wgpu::BindGroup,
     mouse_pressed: bool,
     pub loaded_objects: LoadedObects,
+    spotLights:Vec<SpotLight>,
 }
 
 impl RenderState {
@@ -344,7 +354,7 @@ impl RenderState {
 
         let world = world_loader::World::new("res/testworld.json");
 
-        let light_uniform = world.lights();
+        let light_uniform = world.spot_lights();
 
         //Fprintln!("{:?}", world);
 
