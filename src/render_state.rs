@@ -20,18 +20,46 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 );
 
 pub const MAX_LIGHTS: usize = 2;
-#[derive(Debug, Clone,Copy)]
-pub struct SpotLight{
-    camera:camera::Camera,
-    color:[f32;3],
-    projection:Projection,
+
+pub struct SpotLightUniform{
+    view_position: [[f32; 4];MAX_LIGHTS],
+    view_proj: [[[f32; 4]; 4];MAX_LIGHTS],
+    color:[[f32;4];MAX_LIGHTS],
 }
-impl SpotLight{
-    pub fn new(color: [f32;3], cam:camera::Camera, proj:Projection)->Self{
-        return SpotLight { camera:cam, color, projection:proj}
+
+#[derive(Debug, Clone)]
+pub struct SpotLights{
+    cameras:Vec<camera::Camera>,
+    colors:Vec<[f32;3]>,
+    projections:Vec<Projection>,
+}
+impl SpotLights{
+    pub fn new(colors: Vec<[f32;3]>, cameras: Vec<camera::Camera>, projections:Vec<Projection>)->Self{
+        return SpotLights {cameras, colors, projections}
     }
-    pub fn view_projection(&self)->Matrix4<f32>{
-        self.projection.calc_matrix() * self.camera.calc_matrix()
+    pub fn view_projection(&self, index:usize)->Matrix4<f32>{
+        self.projections[index].calc_matrix() * self.cameras[index].calc_matrix()
+    }
+    pub fn to_uniform(&self)->SpotLightUniform{
+        let mut view_position=[[0.0; 4];MAX_LIGHTS];
+        for i in 0..self.cameras.len(){
+            view_position[i][0]=self.cameras[i].position[0];
+            view_position[i][1]=self.cameras[i].position[1];
+            view_position[i][2]=self.cameras[i].position[2];
+        }
+        let mut color=[[0.0;4];MAX_LIGHTS];
+        for i in 0..self.colors.len(){
+            color[i][0]=self.colors[i][0];
+            color[i][1]=self.colors[i][1];
+            color[i][2]=self.colors[i][2];
+        }
+        let mut view_proj=[[[0.0; 4]; 4];MAX_LIGHTS];
+
+        for i in 0..self.projections.len(){
+            view_proj[i]=self.projections[i].calc_matrix().into();
+        }
+
+        return SpotLightUniform { view_position, view_proj, color }
     }
 }
 
@@ -176,7 +204,7 @@ pub struct RenderState {
     light_bind_group: wgpu::BindGroup,
     mouse_pressed: bool,
     pub loaded_objects: LoadedObects,
-    spotLights:Vec<SpotLight>,
+    spot_lights:SpotLights,
 }
 
 impl RenderState {
@@ -359,7 +387,7 @@ impl RenderState {
 
         let world = world_loader::World::new("res/testworld.json");
 
-        let light_uniform = world.spot_lights();
+        let spot_lights = world.spot_lights();
 
         //Fprintln!("{:?}", world);
 
@@ -372,7 +400,7 @@ impl RenderState {
             padding: [0, 0, 0],
         };*/
 
-        let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        /*let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light VB"),
             contents: bytemuck::cast_slice(&[light_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -400,7 +428,7 @@ impl RenderState {
                 resource: light_buffer.as_entire_binding(),
             }],
             label: None,
-        });
+        });*/
 
         let objs = world.load_obj_models(&device, &queue, &texture_bind_group_layout);
 
