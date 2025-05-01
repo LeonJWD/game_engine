@@ -10,18 +10,25 @@
             "path": "res/gameworld.obj"
         }
     ],
-    "lights": [
+    "spot_lights": [
         {
             "position": [
                 0.0,
                 5.0,
                 10.0
             ],
+            "yaw":0.0,
+            "pitch":0.0,
             "color": [
                 1.0,
                 1.0,
                 1.0
-            ]
+            ],
+            "width":100,
+            "height":100,
+            "fovy":45.0,
+            "znear":0.1,
+            "zfar":1.0
         }
     ]
 }

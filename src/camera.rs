@@ -16,7 +16,7 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 
 const SAFE_FRAC_PI_2: f32 = FRAC_PI_2 - 0.0001;
 
-#[derive(Debug)]
+#[derive(Debug, Clone,Copy)]
 pub struct Camera {
     pub position: Point3<f32>,
     pub yaw: Rad<f32>,
@@ -46,6 +46,7 @@ impl Camera {
         )
     }
 }
+#[derive(Debug, Clone,Copy)]
 pub struct Projection {
     aspect: f32,
     fovy: Rad<f32>,

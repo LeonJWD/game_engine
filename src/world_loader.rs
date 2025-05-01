@@ -1,7 +1,7 @@
 use std::cell::RefMut;
 
 use crate::{
-    camera::Camera, object_loader, render_state::{self, LightUniform, SpotLight}
+    camera::{Camera, Projection}, object_loader, render_state::{self, LightUniform, SpotLight}
 };
 use cgmath::{self, Rad, Rotation3};
 
@@ -82,8 +82,16 @@ impl World {
             let yaw=light["yaw"].as_f32().unwrap();
             let pitch=light["pitch"].as_f32().unwrap();
 
+            let width=light["width"].as_u32().unwrap();
+            let height=light["height"].as_u32().unwrap();
+            let fovy=light["fovy"].as_f32().unwrap();
+            let znear =light["znear"].as_f32().unwrap();
+            let zfar =light["zfar"].as_f32().unwrap();
+
+            let proj= Projection::new(width, height, Rad(fovy), znear, zfar);
+
             let camera=Camera::new(position, Rad(yaw) , Rad(pitch));
-            let spot_light=SpotLight::new(color, camera);
+            let spot_light=SpotLight::new(color, camera, proj);
             spot_lights.push(spot_light);
 
         }

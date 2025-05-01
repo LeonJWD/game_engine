@@ -3,7 +3,7 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use cgmath::prelude::*;
+use cgmath::{prelude::*, Matrix4};
 
 use crate::{
     camera, model::{DrawModel, Model, ModelVertex, Vertex}, object_loader::LoadedObects, texture
@@ -20,14 +20,18 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 );
 
 pub const MAX_LIGHTS: usize = 2;
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone,Copy)]
 pub struct SpotLight{
     camera:camera::Camera,
-    color:[f32;3]
+    color:[f32;3],
+    projection:Projection,
 }
 impl SpotLight{
-    pub fn new(color: [f32;3], cam:camera::Camera)->Self{
-        return SpotLight { camera:cam, color}
+    pub fn new(color: [f32;3], cam:camera::Camera, proj:Projection)->Self{
+        return SpotLight { camera:cam, color, projection:proj}
+    }
+    pub fn view_projection(&self)->Matrix4<f32>{
+        self.projection.calc_matrix() * self.camera.calc_matrix()
     }
 }
 
@@ -52,6 +56,7 @@ impl LightUniform {
             padding: [0; 3],
         }
     }
+    
 }
 
 #[derive(Debug, Clone, Copy)]
