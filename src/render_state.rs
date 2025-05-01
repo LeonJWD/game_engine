@@ -1,6 +1,6 @@
 use image::GenericImageView;
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, Texture};
 use winit::window::Window;
 
 use cgmath::{prelude::*, Matrix4};
@@ -21,6 +21,8 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 
 pub const MAX_LIGHTS: usize = 2;
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SpotLightUniform{
     view_position: [[f32; 4];MAX_LIGHTS],
     view_proj: [[[f32; 4]; 4];MAX_LIGHTS],
@@ -64,7 +66,7 @@ impl SpotLights{
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
     position: [[f32; 4]; MAX_LIGHTS],
     color: [[f32; 4]; MAX_LIGHTS],
@@ -198,16 +200,75 @@ pub struct RenderState {
     instance_ranges: Vec<std::ops::Range<u32>>,
     instance_buffer: wgpu::Buffer,
     instances: Vec<Instance>,
-    light_uniform: LightUniform,
-    light_buffer: wgpu::Buffer,
-    light_bind_group_layout: wgpu::BindGroupLayout,
-    light_bind_group: wgpu::BindGroup,
+   // light_uniform: LightUniform,
+   // light_buffer: wgpu::Buffer,
+   // light_bind_group_layout: wgpu::BindGroupLayout,
+   // light_bind_group: wgpu::BindGroup,
     mouse_pressed: bool,
     pub loaded_objects: LoadedObects,
     spot_lights:SpotLights,
+    spot_light_uniform:SpotLightUniform,
+    spot_light_buffer:wgpu::Buffer,
+    spot_light_bind_group_layout: wgpu::BindGroupLayout,
+    spot_light_bind_group: wgpu::BindGroup,
+    spot_light_texture:Texture,
+    spot_light_pipeline: wgpu::RenderPipeline,
 }
 
 impl RenderState {
+    fn create_shadow_pipeline(
+        device: &wgpu::Device,
+        layout: &wgpu::PipelineLayout,
+        color_format: wgpu::TextureFormat,
+        vertex_layouts: &[wgpu::VertexBufferLayout],
+        shader: wgpu::ShaderModuleDescriptor,
+    ) -> wgpu::RenderPipeline {
+        let shader = device.create_shader_module(shader);
+
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            cache: None,
+            label: Some("Render Pipeline"),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                buffers: vertex_layouts,
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_depth"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: color_format,
+                    blend: Some(wgpu::BlendState {
+                        alpha: wgpu::BlendComponent::REPLACE,
+                        color: wgpu::BlendComponent::REPLACE,
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil:None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        })
+    }
     fn create_render_pipeline(
         device: &wgpu::Device,
         layout: &wgpu::PipelineLayout,
@@ -389,6 +450,59 @@ impl RenderState {
 
         let spot_lights = world.spot_lights();
 
+        let spot_light_uniform=spot_lights.to_uniform();
+
+        let spot_light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Spot_Light Buffer"),
+            contents: bytemuck::cast_slice(&[spot_light_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let spot_light_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("spot_light_bind_group_layout"),
+        });
+
+    let spot_light_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        layout: &spot_light_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: spot_light_buffer.as_entire_binding(),
+        }],
+        label: Some("spot_light"),
+    });
+
+    let spot_light_texture_size=wgpu::Extent3d{
+        width: spot_lights.projections[0].width,
+        height: spot_lights.projections[0].width,
+        depth_or_array_layers:spot_lights.cameras.len() as u32,
+    };
+    let spot_light_texture_descriptor=&wgpu::TextureDescriptor{
+        label:Some("spot light shadow map"),
+        size:spot_light_texture_size,
+        mip_level_count: 1,
+        sample_count:1,
+        dimension:wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Depth32Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats:&[],
+    };
+    
+    let spot_light_texture=device.create_texture(spot_light_texture_descriptor);
+        
+
+
+
         //Fprintln!("{:?}", world);
 
         /*
@@ -497,7 +611,7 @@ impl RenderState {
                 bind_group_layouts: &[
                     &texture_bind_group_layout,
                     &camera_bind_group_layout,
-                    &light_bind_group_layout,
+                    &spot_light_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -516,6 +630,21 @@ impl RenderState {
                 shader,
             )
         };
+
+        let spot_light_pipeline = {
+            let shader = wgpu::ShaderModuleDescriptor {
+                label: Some("Normal Shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            };
+            Self::create_shadow_pipeline(
+                &device,
+                &render_pipeline_layout,
+                spot_light_texture.format(),
+                &[ModelVertex::desc(), InstanceRaw::desc()],
+                shader,
+            )
+        };
+            
 
         RenderState {
             window,
@@ -536,12 +665,15 @@ impl RenderState {
             instance_buffer,
             instances: objs.instances.clone(),
             instance_ranges: objs.instance_ranges.clone(),
-            light_uniform,
-            light_buffer,
-            light_bind_group_layout,
-            light_bind_group,
             mouse_pressed: false,
             loaded_objects: objs,
+            spot_light_bind_group,
+            spot_light_bind_group_layout,
+            spot_light_buffer,
+            spot_light_uniform,
+            spot_lights,
+            spot_light_texture,
+            spot_light_pipeline
         }
     }
     pub fn get_window(&self) -> &Window {
@@ -603,19 +735,43 @@ impl RenderState {
             occlusion_query_set: None,
         });
 
+        let mut shadow_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Shadow Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.spot_light_texture.create_view(&wgpu::TextureViewDescriptor::default()),
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment:None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
         //draw commands here
 
-        let pipeline = &self.render_pipeline;
+        let shadow_pipeline=&self.spot_light_pipeline;
+
+        shadow_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        shadow_pass.set_pipeline(&self.spot_light_pipeline);
+
+
+
+
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
         render_pass.set_pipeline(&self.render_pipeline);
+
+        
 
         for i in 0..self.obj_models.len() {
             render_pass.draw_model_instanced(
                 &self.obj_models[i],
                 self.instance_ranges[i].clone(),
                 &self.camera_bind_group,
-                &self.light_bind_group,
+               // &self.spot_light_bind_group,
             );
         }
 

@@ -1,17 +1,17 @@
 use std::cell::RefMut;
 
 use crate::{
-    camera::{Camera, Projection}, object_loader, render_state::{self, LightUniform, SpotLight}
+    camera::{Camera, Projection}, object_loader, render_state::{self, LightUniform, SpotLights}
 };
 use cgmath::{self, Rad, Rotation3};
 
 #[derive(Debug)]
 pub struct World {
     objects: Vec<object_loader::objectLoaderDescriptor>,
-    spot_lights: Vec<render_state::SpotLight>,
+    spot_lights: SpotLights,
 }
 impl World {
-    pub fn spot_lights(&self) -> Vec<render_state::SpotLight> {
+    pub fn spot_lights(&self) -> SpotLights {
         self.spot_lights.clone()
     }
     pub fn load_obj_models(
@@ -59,7 +59,9 @@ impl World {
 
         let mut i = 0;
 
-        let mut spot_lights=Vec::new();
+        let mut colors=Vec::new();
+        let mut cameras=Vec::new();
+        let mut projections=Vec::new();
 
         for light in lights.members() {
             let mut position = [0.0; 3];
@@ -82,8 +84,8 @@ impl World {
             let yaw=light["yaw"].as_f32().unwrap();
             let pitch=light["pitch"].as_f32().unwrap();
 
-            let width=light["width"].as_u32().unwrap();
-            let height=light["height"].as_u32().unwrap();
+            let width=json["spot_light_width"].as_u32().unwrap();
+            let height=json["spot_light_width"].as_u32().unwrap();
             let fovy=light["fovy"].as_f32().unwrap();
             let znear =light["znear"].as_f32().unwrap();
             let zfar =light["zfar"].as_f32().unwrap();
@@ -91,13 +93,15 @@ impl World {
             let proj= Projection::new(width, height, Rad(fovy), znear, zfar);
 
             let camera=Camera::new(position, Rad(yaw) , Rad(pitch));
-            let spot_light=SpotLight::new(color, camera, proj);
-            spot_lights.push(spot_light);
+            cameras.push(camera);
+            colors.push(color);
+            projections.push(proj);
 
         }
 
+
         Self {
-            spot_lights: spot_lights,
+            spot_lights:SpotLights::new(colors, cameras, projections),
             objects: obj_desc,
         }
     }
