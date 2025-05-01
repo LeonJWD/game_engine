@@ -1,17 +1,18 @@
+use std::cell::RefMut;
+
 use crate::{
-    object_loader,
-    render_state::{self, LightUniform},
+    camera::Camera, object_loader, render_state::{self, LightUniform, SpotLight}
 };
-use cgmath::{self, Rotation3};
+use cgmath::{self, Rad, Rotation3};
 
 #[derive(Debug)]
 pub struct World {
     objects: Vec<object_loader::objectLoaderDescriptor>,
-    lights: render_state::LightUniform,
+    spot_lights: Vec<render_state::SpotLight>,
 }
 impl World {
-    pub fn lights(&self) -> render_state::LightUniform {
-        self.lights
+    pub fn spot_lights(&self) -> Vec<render_state::SpotLight> {
+        self.spot_lights.clone()
     }
     pub fn load_obj_models(
         &self,
@@ -54,33 +55,41 @@ impl World {
 
             obj_desc.push(desc);
         }
-        let lights = &json["lights"];
-
-        let mut position = [[0.0; 4]; render_state::MAX_LIGHTS];
-        let mut color = [[0.0; 4]; render_state::MAX_LIGHTS];
+        let lights = &json["spot_lights"];
 
         let mut i = 0;
 
+        let mut spot_lights=Vec::new();
+
         for light in lights.members() {
+            let mut position = [0.0; 3];
+        let mut color = [0.0; 3];
             let pos_1 = light["position"][0].as_f32().unwrap();
             let pos_2 = light["position"][1].as_f32().unwrap();
             let pos_3 = light["position"][2].as_f32().unwrap();
-            position[i][0] = pos_1;
-            position[i][1] = pos_2;
-            position[i][2] = pos_3;
+            position[0] = pos_1;
+            position[1] = pos_2;
+            position[2] = pos_3;
 
             let col_1 = light["color"][0].as_f32().unwrap();
             let col_2 = light["color"][1].as_f32().unwrap();
             let col_3 = light["color"][2].as_f32().unwrap();
-            color[i][0] = col_1;
-            color[i][1] = col_2;
-            color[i][2] = col_3;
+            color[0] = col_1;
+            color[1] = col_2;
+            color[2] = col_3;
             i += 1;
+
+            let yaw=light["yaw"].as_f32().unwrap();
+            let pitch=light["pitch"].as_f32().unwrap();
+
+            let camera=Camera::new(position, Rad(yaw) , Rad(pitch));
+            let spot_light=SpotLight::new(color, camera);
+            spot_lights.push(spot_light);
+
         }
-        let lights = LightUniform::new(position, color, i.try_into().unwrap());
 
         Self {
-            lights,
+            spot_lights: spot_lights,
             objects: obj_desc,
         }
     }
