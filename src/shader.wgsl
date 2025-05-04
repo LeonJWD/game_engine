@@ -17,12 +17,15 @@ struct VertexOutput {
     @location(3)  world_normal:vec3<f32>,
     @location(4)  world_tangent:vec3<f32>,
     @location(5) world_bitangent:vec3<f32>,
+    @location(6) world_position:vec4<f32>,
 };
 
 struct CameraUniform {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
 };
+
+
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
 
@@ -36,6 +39,11 @@ var t_normal: texture_2d<f32>;
 @group(0) @binding(3)
 var s_normal: sampler;
 
+struct SpotLightUniform{
+    view_pos: array<vec4<f32>,MAX_LIGHTS>,
+    view_proj:array<mat4x4<f32>,MAX_LIGHTS>,
+};
+
 
 struct Light {
     position: array<vec4<f32>,MAX_LIGHTS>,
@@ -43,7 +51,8 @@ struct Light {
     num_lights: u32,
 }
 @group(2) @binding(0)
-var<uniform> light: Light;
+//var<uniform> light: Light;
+var<uniform> spot_light_uniform: SpotLightUniform;
 
 
 struct InstanceInput {
@@ -76,7 +85,7 @@ fn vs_main(
         instance.normal_matrix_2,
     );
 
-
+/*
     var light_position = array<vec3<f32>,MAX_LIGHTS>();
     var light_color = array<vec3<f32>,MAX_LIGHTS>();
 
@@ -84,7 +93,7 @@ fn vs_main(
     for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
         light_position[i] = vec3<f32>(light.position[i][0], light.position[i][1], light.position[i][2]);
         light_color[i] = vec3<f32>(light.color[i][0], light.color[i][1], light.color[i][2]);
-    }
+    }*/
 
     let world_normal = normalize(normal_matrix * model.normal);
     let world_tangent = normalize(normal_matrix * model.tangent);
@@ -107,13 +116,14 @@ fn vs_main(
     out.tex_coords = model.tex_coords;
     out.tangent_position = tangent_matrix * world_position.xyz;
     out.tangent_view_position = tangent_matrix * camera.view_pos.xyz;
+    out.world_position=world_position;
 
     return out;
 }
 
-    @fragment
+   @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-
+/*
     var light_position = array<vec3<f32>,MAX_LIGHTS>();
     var light_color = array<vec3<f32>,MAX_LIGHTS>();
 
@@ -176,6 +186,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 
     let result = (ambient_color + diffuse_color + specular_color) * object_color.xyz;
+*/
 
-    return  vec4<f32>(result, object_color.a);
+    let position_light_relative=spot_light_uniform.view_proj[0]*in.world_position;
+    let depth=1/position_light_relative[2];
+
+
+
+    return  vec4<f32>(depth,depth,depth,1.0);
 } 

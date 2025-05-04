@@ -3,7 +3,7 @@ use std::cell::RefMut;
 use crate::{
     camera::{Camera, Projection}, object_loader, render_state::{self, LightUniform, SpotLights}
 };
-use cgmath::{self, Rad, Rotation3};
+use cgmath::{self, Deg, Rad, Rotation3};
 
 #[derive(Debug)]
 pub struct World {
@@ -90,9 +90,9 @@ impl World {
             let znear =light["znear"].as_f32().unwrap();
             let zfar =light["zfar"].as_f32().unwrap();
 
-            let proj= Projection::new(width, height, Rad(fovy), znear, zfar);
+            let proj= Projection::new(width, height, Deg(fovy), znear, zfar);
 
-            let camera=Camera::new(position, Rad(yaw) , Rad(pitch));
+            let camera=Camera::new(position, Deg(yaw) , Deg(pitch));
             cameras.push(camera);
             colors.push(color);
             projections.push(proj);
