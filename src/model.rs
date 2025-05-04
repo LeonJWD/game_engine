@@ -305,6 +305,18 @@ pub trait DrawModel<'a> {
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
     );
+    fn draw_mesh_shadow_instanced(
+        &mut self,
+        mesh: &'a Mesh,
+        instances: Range<u32>,
+        camera_bind_group: &'a wgpu::BindGroup,
+    );
+    fn draw_model_shadow_instanced(
+        &mut self,
+        model: &'a Model,
+        instances: Range<u32>,
+        camera_bind_group: &'a wgpu::BindGroup,
+    );
 }
 
 impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
@@ -336,6 +348,17 @@ where
         self.set_bind_group(2, light_bind_group, &[]);
         self.draw_indexed(0..mesh.num_elements, 0, instances);
     }
+    fn draw_mesh_shadow_instanced(
+        &mut self,
+        mesh: &'b Mesh,
+        instances: Range<u32>,
+        camera_bind_group: &'b wgpu::BindGroup,
+    ) {
+        self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        self.set_bind_group(1, camera_bind_group, &[]);
+        self.draw_indexed(0..mesh.num_elements, 0, instances);
+    }
     fn draw_model(
         &mut self,
         model: &'b Model,
@@ -360,6 +383,20 @@ where
                 instances.clone(),
                 camera_bind_group,
                 light_bind_group,
+            );
+        }
+    }
+    fn draw_model_shadow_instanced(
+        &mut self,
+        model: &'b Model,
+        instances: Range<u32>,
+        camera_bind_group: &'b wgpu::BindGroup,
+    ) {
+        for mesh in &model.meshes {
+            self.draw_mesh_shadow_instanced(
+                mesh,
+                instances.clone(),
+                camera_bind_group,
             );
         }
     }
