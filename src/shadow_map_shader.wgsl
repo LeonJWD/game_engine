@@ -51,6 +51,6 @@ fn vs_depth(
 }
 
 @fragment
-fn fs_depth(){
+fn fs_depth(in: VertexOutput){
 
 }

@@ -131,7 +131,7 @@ impl Model {
         )
         .unwrap();
         let mut materials = Vec::new();
-        for m in obj_materials? {
+        for m in obj_materials.unwrap() {
             let diff = &m.diffuse_texture.unwrap();
             println!("{diff}");
 

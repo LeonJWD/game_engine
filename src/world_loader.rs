@@ -92,7 +92,7 @@ impl World {
 
             let proj= Projection::new(width, height, Deg(fovy), znear, zfar);
 
-            let camera=Camera::new(position, Deg(yaw) , Deg(pitch));
+            let camera=Camera::new(position, Rad(yaw) , Rad(pitch));
             cameras.push(camera);
             colors.push(color);
             projections.push(proj);

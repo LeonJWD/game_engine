@@ -10,26 +10,26 @@
             "path": "res/gameworld.obj"
         }
     ],
-    "spot_light_width":1024,
-    "spot_light_height":1024,
+    "spot_light_width":2048,
+    "spot_light_height":2048,
     "spot_lights": [
         {
             "position": [
-                -5.0,
-                0.0,
-                0.0
+                5.243,
+                10.213,
+                8.1086
             ],
-            "yaw":-10.0,
-            "pitch":-5.0,
+            "yaw":-2.1587,
+            "pitch":-0.79247034,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
             
-            "fovy":20.0,
-            "znear":0.01,
-            "zfar":1.0
+            "fovy":40,
+            "znear":0.1,
+            "zfar":20.0
         }
     ]
 }

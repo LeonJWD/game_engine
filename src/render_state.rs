@@ -1,4 +1,5 @@
 use image::GenericImageView;
+use wgpu::ColorTargetState;
 use std::sync::Arc;
 use wgpu::{Texture, util::DeviceExt};
 use winit::window::Window;
@@ -54,11 +55,10 @@ impl SpotLights {
         self.projections[index].calc_matrix() * self.cameras[index].calc_matrix()
     }
     pub fn to_uniform(&self) -> SpotLightUniform {
-        let mut view_position = [[0.0; 4]; MAX_LIGHTS];
+        let mut view_position = [[1.0; 4]; MAX_LIGHTS];
         for i in 0..self.cameras.len() {
-            view_position[i][0] = self.cameras[i].position[0];
-            view_position[i][1] = self.cameras[i].position[1];
-            view_position[i][2] = self.cameras[i].position[2];
+            let p=self.cameras[i].position.to_homogeneous();
+            view_position[i]=self.cameras[i].position.to_homogeneous().into();
         }
         let mut color = [[0.0; 4]; MAX_LIGHTS];
         for i in 0..self.colors.len() {
@@ -252,17 +252,12 @@ impl RenderState {
                 buffers: vertex_layouts,
                 compilation_options: Default::default(),
             },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_depth"),
-                targets: &[],
-                compilation_options: Default::default(),
-            }),
+            fragment: None,
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: Some(wgpu::Face::Front),
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
                 // Requires Features::DEPTH_CLIP_CONTROL
@@ -532,6 +527,7 @@ impl RenderState {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
+            compare:Some(wgpu::CompareFunction::LessEqual),
             ..Default::default()
         });
 
@@ -552,7 +548,7 @@ impl RenderState {
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
                     },
                 ],
@@ -717,7 +713,7 @@ impl RenderState {
 
         let spot_light_pipeline = {
             let shader = wgpu::ShaderModuleDescriptor {
-                label: Some("Normal Shader"),
+                label: Some("Shadow Map Shader"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("shadow_map_shader.wgsl").into()),
             };
             Self::create_shadow_pipeline(
@@ -881,6 +877,12 @@ impl RenderState {
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+
+        self.queue.write_buffer(
+            &self.spot_light_buffer,
+            0,
+            bytemuck::cast_slice(&[self.spot_light_uniform]),
         );
         //self.queue.write_buffer(
         //   &self.light_buffer,

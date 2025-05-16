@@ -39,6 +39,11 @@ var t_normal: texture_2d<f32>;
 @group(0) @binding(3)
 var s_normal: sampler;
 
+@group(3) @binding(0)
+var t_depth: texture_depth_2d;
+@group(3) @binding(1)
+var s_depth: sampler_comparison;
+
 struct SpotLightUniform{
     view_pos: array<vec4<f32>,MAX_LIGHTS>,
     view_proj:array<mat4x4<f32>,MAX_LIGHTS>,
@@ -123,9 +128,6 @@ fn vs_main(
 
    @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-/*
-    var light_position = array<vec3<f32>,MAX_LIGHTS>();
-    var light_color = array<vec3<f32>,MAX_LIGHTS>();
 
     let tangent_matrix = transpose(mat3x3<f32>(
         in.world_tangent,
@@ -133,65 +135,58 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         in.world_normal,
     ));
 
-   
-
-
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        light_position[i] = vec3<f32>(light.position[i][0], light.position[i][1], light.position[i][2]);
-        light_color[i] = vec3<f32>(light.color[i][0], light.color[i][1], light.color[i][2]);
-    }
-
-      var tangent_light_position = array<vec3<f32>,MAX_LIGHTS >();
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        tangent_light_position[i] = tangent_matrix * light_position[i];
-    }
-
     let object_color: vec4<f32>=textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
 
-    let ambient_strength=0.0;
-    let ambient_color=light_color[0]*ambient_strength;
+    let ambient_strength=0.5;
+    let ambient_color=vec3<f32>(1.0,1.0,1.0)*ambient_strength;
+
+    var light_position = array<vec3<f32>,MAX_LIGHTS>();
+    var light_color = array<vec3<f32>,MAX_LIGHTS>();
+
+    light_position[0] = vec3<f32>(spot_light_uniform.view_pos[0][0], spot_light_uniform.view_pos[0][1], spot_light_uniform.view_pos[0][2]);
+    light_color[0] = vec3<f32>(1.0,1.0,1.0);
+
+    var tangent_light_position = array<vec3<f32>,MAX_LIGHTS >();
+    tangent_light_position[0] = tangent_matrix * light_position[0];
 
     let tangent_normal = object_normal.xyz * 2.0 - 1.0;
-    var light_dir= array<vec3<f32>,MAX_LIGHTS>();
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        light_dir[i] = normalize(tangent_light_position[i] - in.tangent_position);
-    }
 
+    var light_dir= array<vec3<f32>,MAX_LIGHTS>();
+
+    light_dir[0] = normalize(tangent_light_position[0] - in.tangent_position);
 
     let view_dir = normalize(in.tangent_view_position - in.tangent_position);
-    var half_light = array<vec3<f32>,MAX_LIGHTS>();;
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        half_light[i] = normalize(view_dir + light_dir[i]);
-    }
+    var half_light = array<vec3<f32>,MAX_LIGHTS>();
+    half_light[0] = normalize(view_dir + light_dir[0]);
+
     var diffuse_strength = array<f32,MAX_LIGHTS>();
+    diffuse_strength[0] = max(dot(tangent_normal, light_dir[0]), 0.0);
 
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        diffuse_strength[i] = max(dot(tangent_normal, light_dir[i]), 0.0);
-    }
     var diffuse_color = vec3<f32>();
-
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        diffuse_color = (light_color[i] * diffuse_strength[i]) + diffuse_color;
-    }
+    diffuse_color = (light_color[0] * diffuse_strength[0]) + diffuse_color;
 
     var specular_color = vec3<f32>();
-
-    for (var i: u32 = 0; i < light.num_lights; i = i + 1) {
-        let specular_strength = pow(max(dot(tangent_normal, half_light[i]), 0.0), 32.0);
-
-        specular_color = specular_strength * light_color[i]+ specular_color;
-    }
+    let specular_strength = pow(max(dot(tangent_normal, half_light[0]), 0.0), 32.0);
+    specular_color = specular_strength * light_color[0]+ specular_color;
 
 
-
-    let result = (ambient_color + diffuse_color + specular_color) * object_color.xyz;
-*/
-
-    let position_light_relative=spot_light_uniform.view_proj[0]*in.world_position;
-    let depth=1/position_light_relative[2];
+    let d=sample_depth_map(in);
+        
 
 
 
-    return  vec4<f32>(depth,depth,depth,1.0);
+    return  vec4<f32>((ambient_color + diffuse_color + specular_color) * object_color.xyz *d,1.0);
 } 
+
+fn sample_depth_map(in: VertexOutput) ->f32{
+    let bias=0.01;
+    let m = spot_light_uniform.view_proj[0];
+    let projcoords=m*in.world_position;
+    let dm_coords=(projcoords.xyz/projcoords.w)*0.5 +0.5;
+    var shadow=textureSampleCompare(t_depth,s_depth,dm_coords.xy,dm_coords.z);
+    if(dm_coords.z >= 1.0){shadow = 0.0;} 
+        
+    return shadow;
+
+}

@@ -379,7 +379,7 @@ impl tickable for Player {
         //println!("{:?}",dt.as_secs_f32());
         self.speed += self.gravity * dt.as_secs_f32();
         //collison check with all objects
-        self.handle_collision(bvh);
+        //self.handle_collision(bvh);
         self.position += self.speed * dt.as_secs_f32();
         self.position += self.movement_input * dt.as_secs_f32();
         //TODO: take rotationspeed as input from controller instead direct rotation to be able to apply dt
@@ -389,7 +389,7 @@ impl tickable for Player {
         self.pitch += self.pitch_input * dt.as_secs_f32();
         self.yaw_input.0 = 0.0;
         self.pitch_input.0 = 0.0;
-        println!("{:?}", self.position);
+        println!("{:?}, {:?}, {:?}", self.position, self.yaw, self.pitch);
     }
     fn update_render_state(&mut self, render_state: &mut RenderState) {
         render_state.camera.position = self.position;
